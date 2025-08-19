@@ -1,0 +1,58 @@
+enemy.js: Defines Enemy class (movement, health).
+game.js: Core game logic (TowerDefenseGame class) – manages state, scene, input, UI, entity placement, spawning, game loop. Central hub.
+hud.css: Styles for HUD and UI.
+index.html: Main HTML, loads all assets, sets up canvas.
+particle.js: Particle effects logic.
+player.js: Player class logic (currently placeholder).
+skybox.js: Manages 3D skybox.
+weather.js: Implements weather effects.
+colony.js: Defines Colony class (model loading, management).
+assets/ Directory
+
+images/: Image assets (pause1.jpg).
+lore/: Lore audio (lore1.mp3 to lore5.mp3).
+models/: 3D models (.glb, .fbx, .obj, .ply, .blend1). Key models: map.glb, enemy.glb, enemy2.glb, basic_tower.glb, missile_tower.glb, laser_tower.glb, colony1.glb.
+music/: Background music and sound effects.
+video/: Video assets (intro.mp4).
+readmes and spine/ Directory
+
+BABYLONJSBIBLE2.txt: Babylon.js notes.
+Complete Babylon.js GLB_GLTF Loaders and Plugins R.pdf: Babylon.js documentation.
+pause.js: PauseMenu class (display, functionality).
+Quick Reference SOP for Navigation:
+
+Core Game Flow:
+
+index.html: Entry point.
+game.js: Central control, game state, scene, input, UI, entity orchestration.
+hud.css: UI styling.
+Game Entities & Logic:
+
+enemy.js: Enemy behavior.
+player.js: Player behavior.
+colony.js: Colony structures.
+particle.js: Visual particle effects.
+skybox.js: 3D background.
+weather.js: Dynamic weather.
+Assets:
+
+assets/models/: All 3D models.
+assets/images/: 2D images.
+assets/music/: Music and sound effects.
+assets/lore/: In-game lore audio.
+assets/video/: Video files.
+Utilities/Supporting Files:
+
+readmes and spine/pause.js: Pause menu logic.
+readmes and spine/ (other files): Documentation.
+To modify/understand specific features:
+
+Game Initialization/Main Loop/UI Updates/Tower & Colony Placement/Enemy Spawning: game.js.
+Enemy Behavior: enemy.js.
+Player Behavior: player.js.
+Colony Behavior/Model Loading: colony.js.
+Tower Definitions/Placement Logic: game.js (this.towerTypes, placeTower).
+UI Styling: hud.css.
+3D Models: assets/models/.
+Audio/Video: assets/music/, assets/lore/, assets/video/.
+Pause Menu Functionality: readmes and spine/pause.js.
