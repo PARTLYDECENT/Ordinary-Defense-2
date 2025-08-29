@@ -13,8 +13,8 @@ class TowerDefenseGame {
         this.camera = null;
         
         // Game state
-        this.gold = 600;
-        this.lives = 25;
+        this.gold = 1000;
+        this.lives = 50;
         this.score = 0;
         this.wave = 0;
         this.enemiesInWave = 4;
@@ -34,7 +34,14 @@ class TowerDefenseGame {
             "assets/music/2.wav",
             "assets/music/3.wav",
             "assets/music/4.wav",
-            "assets/music/5.wav"
+            "assets/music/5.wav",
+            "assets/music/6.wav",
+            "assets/music/7.wav",
+            "assets/music/8.wav",
+            "assets/music/9.wav",
+            "assets/music/10.wav",
+            "assets/music/11.wav",
+            "assets/music/12.wav"
         ];
         this.currentMusic = null;
         this.currentMusicIndex = -1; // To avoid immediate repeats
@@ -74,6 +81,14 @@ class TowerDefenseGame {
         this.cameraSensitivity = 0.002; // Reduced sensitivity
         this.targetCameraRotation = null;
         this.cameraRotationSpeed = 0.1; // Smoothing factor
+
+        this.entryPoints = [
+            new BABYLON.Vector3(-100, 0, 150),
+            new BABYLON.Vector3(100, 0, 150),
+            new BABYLON.Vector3(-100, 0, -150),
+            new BABYLON.Vector3(100, 0, -150),
+        ];
+        this.targetColony = null;
         
         // Tower definitions - rebalanced
         this.towerTypes = {
@@ -172,6 +187,7 @@ class TowerDefenseGame {
         await this.createScene();
         this.weatherSystem = new WeatherSystem(this.scene);
         this.createTerrain();
+        SprawlingPlant.spawnEcosystem(this.scene, 1, 200);
         this.createEnhancedPath();
         this.createCamera();
         this.setupControls();
@@ -231,7 +247,7 @@ class TowerDefenseGame {
         
         // Enhanced lighting with better atmosphere
         const hemiLight = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), this.scene);
-        hemiLight.intensity = 0.7;
+        hemiLight.intensity = 0.07;
         hemiLight.diffuse = new BABYLON.Color3(0.9, 0.9, 1.0);
         hemiLight.specular = new BABYLON.Color3(0.6, 0.6, 0.8);
         
@@ -241,7 +257,7 @@ class TowerDefenseGame {
         
         // Subtle fog
         this.scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-        this.scene.fogDensity = 0.0010;
+        this.scene.fogDensity = 0.010;
         this.scene.fogColor = new BABYLON.Color3(0.2, 0.2, 0.3);
         
         // Skybox with HDR texture
@@ -254,186 +270,81 @@ class TowerDefenseGame {
 
     async createTerrain() {
         const meshes = await this.loadModel("assets/models/", "map.glb");
-        // Vertex Shader
-        const vertexShader = `
-            precision highp float;
-
-            // Attributes
-            attribute vec3 position;
-            attribute vec2 uv;
-
-            // Uniforms
-            uniform mat4 worldViewProjection;
-
-            // Varying
-            varying vec2 vUV;
-
-            void main(void) {
-                gl_Position = worldViewProjection * vec4(position, 1.0);
-                vUV = uv;
-            }
-        `;
-
-        // Fragment Shader
-        const fragmentShader = `
-            precision highp float;
-
-            varying vec2 vUV;
-            uniform float iTime;
-            uniform float uRandomFactor; // New random factor uniform
-
-            void main(void) {
-                vec2 uv = vUV;
-                vec3 color = vec3(0.0);
-
-                // Introduce random UV distortion
-                uv.x += sin(uv.y * 15.0 + iTime * 2.0) * 0.05 * uRandomFactor;
-                uv.y += cos(uv.x * 12.0 + iTime * 1.5) * 0.05 * uRandomFactor;
-
-                // Simple animated pattern
-                float pattern = sin(uv.x * 10.0 + iTime) * cos(uv.y * 10.0 + iTime * 0.5);
-                color = vec3(pattern * 0.5 + 0.5, pattern * 0.3 + 0.3, pattern * 0.1 + 0.1); // Shades of purple/blue
-
-                // Introduce random color shift
-                color.r += uRandomFactor * 0.5;
-                color.g += uRandomFactor * 0.3;
-                color.b += uRandomFactor * 0.7;
-
-                gl_FragColor = vec4(color, 1.0);
-            }
-        `;
 
         if (meshes.length > 0) {
             this.ground = meshes[0];
             console.log("🌱 Terrain loaded from map.glb", this.ground);
-
-            // Create shader material
-            const shaderMaterial = new BABYLON.ShaderMaterial(
-                "wickedShader",
-                this.scene,
-                {
-                    vertexSource: vertexShader,
-                    fragmentSource: fragmentShader,
-                },
-                {
-                    attributes: ["position", "uv"],
-                    uniforms: ["worldViewProjection", "iTime", "uRandomFactor"], // Add uRandomFactor
-                }
-            );
-
-            // Apply the shader material to the ground
-            this.ground.material = shaderMaterial;
-
-            let lastRandomUpdateTime = 0;
-            const randomUpdateInterval = 2000; // Update random factor every 2 seconds
-
-            // Update shader time and random factor in render loop
-            this.scene.onBeforeRenderObservable.add(() => {
-                shaderMaterial.setFloat("iTime", this.scene.getEngine().getDeltaTime() * 0.001);
-
-                const now = Date.now();
-                if (now - lastRandomUpdateTime > randomUpdateInterval) {
-                    shaderMaterial.setFloat("uRandomFactor", Math.random()); // Set a new random factor
-                    lastRandomUpdateTime = now;
-                }
-            });
 
         } else {
             console.error("❌ No meshes found in map.glb");
         }
     }
 
-    createEnhancedPath() {
-        // Much more elaborate winding path (S-shape, 10x longer)
-        const pathPoints = [
-            new BABYLON.Vector3(-400, 0, 0),   // Start far left
-            new BABYLON.Vector3(-300, 0, 100),
-            new BABYLON.Vector3(-100, 0, 150),
-            new BABYLON.Vector3(100, 0, 100),
-            new BABYLON.Vector3(300, 0, 0),
-            new BABYLON.Vector3(400, 0, -100),
-            new BABYLON.Vector3(200, 0, -150),
-            new BABYLON.Vector3(0, 0, -100),
-            new BABYLON.Vector3(-200, 0, 0),
-            new BABYLON.Vector3(-300, 0, 100), // Continue the S
-            new BABYLON.Vector3(-100, 0, 150),
-            new BABYLON.Vector3(100, 0, 100),
-            new BABYLON.Vector3(300, 0, 0),
-            new BABYLON.Vector3(400, 0, -100),
-            new BABYLON.Vector3(200, 0, -150),
-            new BABYLON.Vector3(0, 0, -100),
-            new BABYLON.Vector3(-200, 0, 0),
-            new BABYLON.Vector3(-400, 0, 100), // Final curve
-            new BABYLON.Vector3(-500, 0, 200)  // End far right and down
-        ];
-
-        this.path = pathPoints.map(point => {
+    createEnhancedPath(startPoint, endPoint) {
+        if (!startPoint || !endPoint) {
+            this.path = [];
+            return;
+        }
+    
+        const points = [];
+        const segments = 10; // Number of segments for the path
+        for (let i = 0; i <= segments; i++) {
+            points.push(BABYLON.Vector3.Lerp(startPoint, endPoint, i / segments));
+        }
+    
+        this.path = points.map(point => {
             point.y = 0.15; // Slightly above ground
             return point;
         });
-
+    
         // Clear existing path meshes
         this.pathMeshes.forEach(mesh => mesh.dispose());
         this.pathMeshes = [];
-
-        // Create visual path with better styling
-        for (let i = 0; i < this.path.length - 1; i++) {
-            const start = this.path[i];
-            const end = this.path[i + 1];
-            const distance = BABYLON.Vector3.Distance(start, end);
-            
-            const pathSegment = BABYLON.MeshBuilder.CreateBox("path", {
-                width: 3.5, // Keep width same
-                height: 0.3, 
-                depth: distance + 0.5
-            }, this.scene);
-            
-            pathSegment.position = BABYLON.Vector3.Center(start, end);
-            pathSegment.lookAt(end);
-            
-            const pathMat = new BABYLON.StandardMaterial("pathMat", this.scene);
-            pathMat.diffuseColor = new BABYLON.Color3(0.7, 0.5, 0.3);
-            pathMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-            pathMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0.02);
-            pathSegment.material = pathMat;
-            pathSegment.visibility = 0; // Make path segment invisible
-            
-            this.pathMeshes.push(pathSegment);
-        }
-        
-        // Add path markers for visual clarity
-        this.path.forEach((point, index) => {
-            if (index % 3 === 0) { // Every 3rd point
-                const marker = BABYLON.MeshBuilder.CreateCylinder("marker", {
-                    height: 1, diameterTop: 0.5, diameterBottom: 0.8
-                }, this.scene);
-                marker.position = point.clone();
-                marker.position.y = 0.5;
-                
-                const markerMat = new BABYLON.StandardMaterial("markerMat", this.scene);
-                markerMat.diffuseColor = new BABYLON.Color3(0.9, 0.7, 0.4);
-                markerMat.emissiveColor = new BABYLON.Color3(0.2, 0.15, 0.1);
-                marker.material = markerMat;
-                marker.visibility = 0; // Make marker invisible
-                
-                this.pathMeshes.push(marker);
-            }
-        });
-        
-        console.log("🛤️ Enhanced winding path created with", this.path.length, "waypoints");
+    
+        // Create visual path
+        const pathLine = BABYLON.MeshBuilder.CreateLines("pathLine", { points: this.path }, this.scene);
+        pathLine.color = new BABYLON.Color3(0.8, 0.5, 0.2);
+        pathLine.visibility = 0.5; // Make it semi-visible for debugging or style
+        this.pathMeshes.push(pathLine);
+    
+        console.log("🛤️ Dynamic path created with", this.path.length, "waypoints");
     }
 
     createCamera() {
-        this.camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 18, -35), this.scene);
+        this.camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 9, -17), this.scene);
         this.camera.rotation.x = Math.PI / 6; // Look down at good angle
+        this.camera.fov = 0.9; // Reduced FOV for smaller perspective
         this.targetCameraRotation = new BABYLON.Vector2(this.camera.rotation.x, this.camera.rotation.y);
         this.camera.attachControl(this.canvas, false);
         this.scene.activeCamera = this.camera;
-        this.camera.maxZ = 20000; // Increase the field of view
-        console.log("📷 Camera positioned");
+        this.camera.maxZ = 2000; // Reduced view distance
+        console.log("📷 Camera positioned with reduced scale");
     }
 
     setupControls() {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
         // Keyboard controls with pause functionality
         window.addEventListener('keydown', (e) => { 
             this.keys[e.code] = true;
@@ -616,6 +527,11 @@ class TowerDefenseGame {
                     this.gold -= itemData.cost;
                     this.updateUI();
                     console.log(`🏡 Built ${itemData.name} for ${itemData.cost}!`);
+
+                    if (this.colonies.length === 1) {
+                        this.targetColony = colony;
+                        console.log("🎯 First colony placed, setting as target for enemies.");
+                    }
                 } else if (this.selectedTowerType === 'playerAttack') {
                     this.gold -= itemData.cost;
                     this.updateUI();
@@ -717,29 +633,63 @@ class TowerDefenseGame {
     updateCamera() {
         if (this.isPaused) return;
 
+        const deltaTime = this.engine.getDeltaTime() / 1000.0; // Delta time in seconds
+
         // Smooth camera rotation
         if (this.targetCameraRotation) {
             this.camera.rotation.y += (this.targetCameraRotation.y - this.camera.rotation.y) * this.cameraRotationSpeed;
             this.camera.rotation.x += (this.targetCameraRotation.x - this.camera.rotation.x) * this.cameraRotationSpeed;
         }
         
-        const speed = 1.2;
+        const speed = 20.0; // Adjusted speed for delta time
         const movement = new BABYLON.Vector3(0, 0, 0);
         
-        if (this.keys['KeyW']) movement.z += speed;
-        if (this.keys['KeyS']) movement.z -= speed;
-        if (this.keys['KeyA']) movement.x -= speed;
-        if (this.keys['KeyD']) movement.x += speed;
-        if (this.keys['Space']) movement.y += speed; // Move up
-        if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) movement.y -= speed; // Move down
+        if (this.keys['KeyW']) movement.z += 1;
+        if (this.keys['KeyS']) movement.z -= 1;
+        if (this.keys['KeyA']) movement.x -= 1;
+        if (this.keys['KeyD']) movement.x += 1;
         
         if (movement.length() > 0) {
+            movement.normalize(); // Ensure consistent speed in all directions
             const forward = this.camera.getDirection(BABYLON.Vector3.Forward());
             const right = this.camera.getDirection(BABYLON.Vector3.Right());
-            const up = this.camera.getDirection(BABYLON.Vector3.Up());
             
-            const worldMovement = forward.scale(movement.z).add(right.scale(movement.x)).add(up.scale(movement.y));
+            // Project movement to XZ plane to prevent flying
+            const forwardXZ = forward.clone();
+            forwardXZ.y = 0;
+            forwardXZ.normalize();
+
+            const rightXZ = right.clone();
+            rightXZ.y = 0;
+            rightXZ.normalize();
+
+            const worldMovement = forwardXZ.scale(movement.z).add(rightXZ.scale(movement.x));
+            worldMovement.scaleInPlace(speed * deltaTime);
             this.camera.position.addInPlace(worldMovement);
+        }
+
+        // Ground collision and sticking
+        if (this.ground) {
+            // Ray starts from high above the camera's XZ position and goes down.
+            const ray = new BABYLON.Ray(new BABYLON.Vector3(this.camera.position.x, 1000, this.camera.position.z), new BABYLON.Vector3(0, -1, 0));
+            
+            const hit = this.scene.pickWithRay(ray, (mesh) => {
+                let current = mesh;
+                while (current) {
+                    if (current === this.ground) {
+                        return true;
+                    }
+                    current = current.parent;
+                }
+                return false;
+            });
+
+            if (hit && hit.pickedPoint) {
+                const playerHeight = 4.0; // How high the camera is above the ground
+                const targetY = hit.pickedPoint.y + playerHeight;
+                // Smoothly interpolate to the target height
+                this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+            }
         }
     }
 
@@ -753,6 +703,11 @@ class TowerDefenseGame {
     }
 
     async spawnEnemy() {
+        if (!this.targetColony) return; // Don't spawn until a colony exists
+
+        const startPoint = this.entryPoints[Math.floor(Math.random() * this.entryPoints.length)];
+        this.createEnhancedPath(startPoint, this.targetColony.mesh.position);
+
         if (this.path.length === 0) return;
 
         let modelFileName = "enemy.glb";
