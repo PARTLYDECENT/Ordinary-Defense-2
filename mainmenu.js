@@ -31,6 +31,33 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Background Slideshow ---
+    const backgrounds = [];
+    for (let i = 1; i <= 10; i++) {
+        backgrounds.push(`assets/images/bg${i}.jpg`);
+    }
+
+    let currentBgIndex = 0;
+
+    function changeBackground() {
+        if (!mainMenu) return;
+
+        let nextBgIndex;
+        do {
+            nextBgIndex = Math.floor(Math.random() * backgrounds.length);
+        } while (nextBgIndex === currentBgIndex);
+
+        currentBgIndex = nextBgIndex;
+        mainMenu.style.backgroundImage = `url('${backgrounds[currentBgIndex]}')`;
+
+        // Call itself again with a new random delay
+        setTimeout(changeBackground, Math.random() * 5000 + 3000); // 3-8 seconds
+    }
+
+    // Start the slideshow after an initial delay
+    setTimeout(changeBackground, Math.random() * 3000 + 2000); // 2-5 seconds
+
+
     // --- Emoji Rain Effect ---
     const emojis = ['🚀', '🌌', '🌠', '🛰️', '👽', '✨', '💫', '☄️', '👾'];
 
