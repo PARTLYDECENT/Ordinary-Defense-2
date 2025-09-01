@@ -22,7 +22,7 @@ class PauseMenu {
 
         this.menuElement.innerHTML = `
             <div style="background: rgba(10, 10, 10, 0.85); border-image: linear-gradient(45deg, #ff8c00, #ff4500) 1; border-width: 2px; border-style: solid; padding: 25px 50px; box-shadow: 0 0 25px rgba(255, 140, 0, 0.6); text-align: center; backdrop-filter: blur(5px);">
-                <h1 style="font-size: 3em; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 6px; color: #ffaf40;">Ordianry Defense 2</h1>
+                <h1 style="font-size: 3em; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 6px; color: #ffaf40;">Ordinary Defense 2</h1>
                 <h2 style="font-size: 1.5em; margin-bottom: 30px; color: #ff8c00; font-weight: normal;">SYSTEM PAUSED</h2>
                 <div class="menu-options" style="display: flex; flex-direction: column; gap: 18px;">
                     <button id="resumeBtn" class="menu-btn">RESUME</button>

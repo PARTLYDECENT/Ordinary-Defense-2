@@ -94,7 +94,7 @@
       this.config = Object.assign({
         // Size and Growth
         initialSize: 0.1 + Math.random() * 0.3,
-        maxSize: 2.0 + Math.random() * 3.0,
+        maxSize: 0.3 + Math.random() * 0.2,
         growthRate: 0.02 + Math.random() * 0.03,
         
         // Vine System
@@ -105,8 +105,8 @@
         
         // Spreading Behavior
         spreadRadius: 8 + Math.random() * 12,
-        spreadChance: 0.0001, // Per frame chance to spread
-        maxOffspring: 3 + Math.floor(Math.random() * 4),
+        spreadChance: 0.0, // Set to 0 to prevent spreading
+        maxOffspring: 0, // Set to 0 to prevent spreading
         
         // Visual Properties
         leafDensity: 0.5 + Math.random() * 0.5,
@@ -449,9 +449,14 @@
     }
 
     /**
-     * Handles plant spreading and reproduction
+     * Handles plant spreading and reproduction.
+     * REVISION: Multiplication is disabled.
      */
     updateSporeSpread(deltaTime) {
+        // --- REVISION: Spreading is disabled by immediately returning from this function.
+        return;
+
+        // Original logic is kept below but is now unreachable.
         // Only mature plants can spread
         if (this.maturity < 0.8 || this.offspring.length >= this.config.maxOffspring) return;
         
@@ -627,45 +632,44 @@
     static createVariant(scene, position, variant = 'normal', level = 1) {
         const variants = {
             normal: { 
-                maxSize: 2.0, 
+                maxSize: 0.5, 
                 vineCount: 6, 
                 spreadRadius: 10 
             },
             seedling: { 
                 initialSize: 0.05, 
-                maxSize: 0.8, 
+                maxSize: 0.2, 
                 vineCount: 3, 
                 spreadRadius: 5,
                 growthRate: 0.01 
             },
             ancient: { 
                 initialSize: 1.0,
-                maxSize: 5.0, 
+                maxSize: 0.8, 
                 vineCount: 12, 
                 spreadRadius: 20,
-                maxOffspring: 8,
+                maxOffspring: 0,
                 glowIntensity: 0.4 
             },
             flowering: { 
-                maxSize: 3.0, 
+                maxSize: 0.6, 
                 vineCount: 8, 
                 flowerChance: 0.9,
                 glowIntensity: 0.3,
                 spreadRadius: 15 
             },
             creeper: { 
-                maxSize: 1.5, 
+                maxSize: 0.4, 
                 vineCount: 15, 
                 maxVineLength: 8,
                 spreadRadius: 25,
-                spreadChance: 0.002 
+                spreadChance: 0.0
             }
         };
         
         const config = variants[variant] || variants.normal;
         
         // Scale with level
-        config.maxSize = (config.maxSize || 2.0) * (1 + level * 0.2);
         config.spreadRadius = (config.spreadRadius || 10) * (1 + level * 0.1);
         config.health = (config.health || 100) * level;
         
@@ -730,6 +734,7 @@
                     predator.updateTerritorialControl(currentTime);
                     predator.updateThreatDisplay(currentTime);
                     predator.updateToxicAura(deltaTime);
+                    predator.updateSporeSpread(deltaTime);
                 }
             });
 
@@ -780,7 +785,7 @@
       this.config = Object.assign({
         // Size and Aggression
         initialSize: 0.3 + Math.random() * 0.5,
-        maxSize: 4.0 + Math.random() * 6.0,
+        maxSize: 0.1 + Math.random() * 0.2,
         growthRate: 0.08 + Math.random() * 0.05, // Faster growth
         aggressionLevel: 0.7 + Math.random() * 0.3,
         
@@ -800,6 +805,10 @@
         territoryRadius: 12 + Math.random() * 8,
         territoryAggression: 0.6 + Math.random() * 0.4,
         expansionRate: 0.05 + Math.random() * 0.03,
+        
+        // Spreading Behavior (Disabled)
+        spreadChance: 0.0,
+        maxOffspring: 0,
         
         // Visual Menace
         thornyDensity: 0.8 + Math.random() * 0.2,
@@ -835,6 +844,7 @@
       this.isDead = false;
       this.isPredatoryPlant = true;
       this.isHunting = false;
+      this.offspring = [];
       this.currentTarget = null;
       this.threatLevel = 0; // 0 = calm, 1 = maximum threat
 
@@ -1368,6 +1378,41 @@
         attackParticles.targetStopDuration = 0.3;
         attackParticles.disposeOnStop = true;
         attackParticles.start();
+    }
+
+    /**
+     * Handles plant spreading and reproduction.
+     * REVISION: Multiplication is disabled.
+     */
+    updateSporeSpread(deltaTime) {
+        // --- REVISION: Spreading is disabled by immediately returning from this function.
+        return;
+
+        // Original logic is kept below but is now unreachable.
+        // Only mature plants can spread
+        if (this.maturity < 0.8 || (this.config.maxOffspring && this.offspring.length >= this.config.maxOffspring)) return;
+        
+        if (Math.random() < this.config.spreadChance * deltaTime) {
+            this.spreadToNewLocation();
+        }
+    }
+
+    spreadToNewLocation() {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 5 + Math.random() * (this.config.spreadRadius || 10);
+        
+        const newPosition = new BABYLON.Vector3(
+            this.position.x + Math.cos(angle) * distance,
+            this.position.y,
+            this.position.z + Math.sin(angle) * distance
+        );
+        
+        const childConfig = { ...this.config };
+        childConfig.initialSize *= 0.8 + Math.random() * 0.4;
+        childConfig.maxSize *= 0.9 + Math.random() * 0.2;
+        
+        const offspring = new PredatoryThornvine(this.scene, newPosition, childConfig);
+        this.offspring.push(offspring);
     }
 
     /**

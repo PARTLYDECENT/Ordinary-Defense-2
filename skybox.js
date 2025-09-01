@@ -1,17 +1,18 @@
-// Procedural Space Weather Skybox System for Babylon.js
+// Nightmarish Alien Weather Skybox System for Babylon.js
+// Inspired by H.R. Giger's biomechanical aesthetic
 
-class ProceduralSpaceSky {
+class NightmareSpaceSky {
     constructor(scene) {
         this.scene = scene;
         this.skybox = null;
         this.material = null;
         this.time = 0;
         this.weatherState = {
-            nebulaDensity: 0.3,
-            starBrightness: 0.8,
-            cosmicStormIntensity: 0.0,
-            colorShift: 0.0,
-            weatherType: 'clear' // 'clear', 'nebular', 'storm', 'aurora'
+            biomassGrowth: 0.3,
+            veinPulsing: 0.8,
+            corruptionLevel: 0.0,
+            alienBreathing: 0.0,
+            weatherType: 'dormant' // 'dormant', 'infected', 'consuming', 'nightmare', 'void'
         };
         
         this.init();
@@ -19,10 +20,10 @@ class ProceduralSpaceSky {
     }
 
     init() {
-        // Create skybox geometry
-        this.skybox = BABYLON.MeshBuilder.CreateSphere("spaceSkybox", {
+        // Create skybox geometry with higher tessellation for organic distortions
+        this.skybox = BABYLON.MeshBuilder.CreateSphere("nightmareSkybox", {
             diameter: 2000.0,
-            segments: 32
+            segments: 64
         }, this.scene);
         
         // Create custom shader material
@@ -37,7 +38,7 @@ class ProceduralSpaceSky {
     }
 
     createShaderMaterial() {
-        // Vertex shader
+        // Vertex shader with organic distortions
         const vertexShader = `
             precision highp float;
             
@@ -48,208 +49,317 @@ class ProceduralSpaceSky {
             uniform mat4 world;
             uniform vec3 cameraPosition;
             uniform float time;
+            uniform float biomassGrowth;
+            uniform float alienBreathing;
             
             varying vec3 vPositionW;
             varying vec3 vNormalW;
             varying vec3 vDirectionW;
+            varying float vDistortion;
+            
+            // Organic noise for vertex displacement
+            float hash(float n) { return fract(sin(n) * 43758.5453); }
+            float noise(vec3 x) {
+                vec3 p = floor(x);
+                vec3 f = fract(x);
+                f = f * f * (3.0 - 2.0 * f);
+                float n = p.x + p.y * 57.0 + 113.0 * p.z;
+                return mix(mix(mix(hash(n), hash(n + 1.0), f.x),
+                              mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y),
+                          mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+                              mix(hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
+            }
             
             void main(void) {
-                vec4 worldPos = world * vec4(position, 1.0);
+                vec3 pos = position;
+                
+                // Organic breathing distortion
+                float breathe = sin(time * 0.8 + length(position) * 0.01) * alienBreathing * 0.1;
+                
+                // Biomechanical growth distortion
+                float growth = noise(position * 0.05 + time * 0.1) * biomassGrowth * 0.2;
+                
+                // Alien tumor-like bulges
+                float bulge = pow(abs(sin(position.x * 0.02 + time * 0.3)), 8.0) * 
+                             pow(abs(sin(position.y * 0.025 + time * 0.4)), 6.0) * 
+                             biomassGrowth * 0.15;
+                
+                vDistortion = growth + bulge + breathe;
+                pos += normal * vDistortion;
+                
+                vec4 worldPos = world * vec4(pos, 1.0);
                 vPositionW = vec3(worldPos);
                 vNormalW = normalize(vec3(world * vec4(normal, 0.0)));
                 vDirectionW = normalize(vPositionW - cameraPosition);
                 
-                gl_Position = worldViewProjection * vec4(position, 1.0);
+                gl_Position = worldViewProjection * vec4(pos, 1.0);
             }
         `;
 
-        // Fragment shader with procedural space effects
+        // Fragment shader with nightmarish alien effects
         const fragmentShader = `
             precision highp float;
             
             varying vec3 vPositionW;
             varying vec3 vNormalW;
             varying vec3 vDirectionW;
+            varying float vDistortion;
             
             uniform float time;
-            uniform float nebulaDensity;
-            uniform float starBrightness;
-            uniform float cosmicStormIntensity;
-            uniform float colorShift;
+            uniform float biomassGrowth;
+            uniform float veinPulsing;
+            uniform float corruptionLevel;
+            uniform float alienBreathing;
             uniform vec3 cameraPosition;
             
-            // Noise functions
-            float random(vec2 st) {
-                return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+            // Enhanced noise functions for organic horror
+            float hash21(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
             }
             
-            float noise(vec2 st) {
-                vec2 i = floor(st);
-                vec2 f = fract(st);
-                float a = random(i);
-                float b = random(i + vec2(1.0, 0.0));
-                float c = random(i + vec2(0.0, 1.0));
-                float d = random(i + vec2(1.0, 1.0));
-                vec2 u = f * f * (3.0 - 2.0 * f);
-                return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+            float hash31(vec3 p) {
+                return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
             }
             
-            float fbm(vec2 st) {
-                float value = 0.0;
-                float amplitude = 0.5;
-                for (int i = 0; i < 6; i++) {
-                    value += amplitude * noise(st);
-                    st *= 2.0;
-                    amplitude *= 0.5;
-                }
-                return value;
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = hash21(i);
+                float b = hash21(i + vec2(1.0, 0.0));
+                float c = hash21(i + vec2(0.0, 1.0));
+                float d = hash21(i + vec2(1.0, 1.0));
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
             }
             
-            // 3D noise for volumetric effects
-            float noise3D(vec3 p) {
-                return fbm(p.xy) * fbm(p.yz) * fbm(p.xz);
+            float noise3d(vec3 p) {
+                vec3 i = floor(p);
+                vec3 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(mix(hash31(i), hash31(i + vec3(1,0,0)), f.x),
+                              mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+                          mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+                              mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y), f.z);
             }
             
-            // Star field generation
-            float stars(vec2 uv, float density) {
+            float fbm(vec2 p) {
+                float f = 0.0;
+                f += 0.5000 * noise(p); p *= 2.02;
+                f += 0.2500 * noise(p); p *= 2.03;
+                f += 0.1250 * noise(p); p *= 2.01;
+                f += 0.0625 * noise(p);
+                return f / 0.9375;
+            }
+            
+            float fbm3d(vec3 p) {
+                float f = 0.0;
+                f += 0.5000 * noise3d(p); p *= 2.02;
+                f += 0.2500 * noise3d(p); p *= 2.03;
+                f += 0.1250 * noise3d(p); p *= 2.01;
+                f += 0.0625 * noise3d(p);
+                return f / 0.9375;
+            }
+            
+            // Alien star parasites instead of normal stars
+            float alienStars(vec2 uv, float density) {
                 vec2 grid = floor(uv * density);
                 vec2 gridUv = fract(uv * density);
                 
-                float star = 0.0;
+                float parasites = 0.0;
                 for(int i = -1; i <= 1; i++) {
                     for(int j = -1; j <= 1; j++) {
                         vec2 offset = vec2(float(i), float(j));
                         vec2 cellGrid = grid + offset;
-                        vec2 cellCenter = vec2(0.5) + 0.4 * (vec2(random(cellGrid), random(cellGrid + vec2(1.0))) - 0.5);
+                        vec2 cellCenter = vec2(0.5) + 0.4 * (vec2(hash21(cellGrid), hash21(cellGrid + vec2(1.0))) - 0.5);
                         vec2 cellUv = gridUv - offset;
                         
                         float dist = length(cellUv - cellCenter);
-                        float brightness = random(cellGrid + vec2(2.0));
+                        float infection = hash21(cellGrid + vec2(2.0));
                         
-                        if(brightness > 0.8) {
-                            float twinkle = 0.5 + 0.5 * sin(time * 3.0 + brightness * 20.0);
-                            star += (1.0 - smoothstep(0.0, 0.02, dist)) * brightness * twinkle;
+                        if(infection > 0.7) {
+                            // Pulsing alien infection nodes
+                            float pulse = 0.5 + 0.5 * sin(time * 5.0 + infection * 30.0);
+                            float tentacles = sin(atan(cellUv.y - cellCenter.y, cellUv.x - cellCenter.x) * 8.0 + time * 2.0) * 0.02;
+                            float parasite = (1.0 - smoothstep(0.0, 0.03 + tentacles, dist)) * infection * pulse;
+                            
+                            // Add creepy tendrils
+                            float tendrils = fbm(cellUv * 50.0 + time * 0.5) * 0.3;
+                            parasites += parasite * (1.0 + tendrils);
                         }
                     }
                 }
-                return star;
+                return parasites;
             }
             
-            // Nebula generation
-            vec3 nebula(vec3 dir, float time) {
-                vec3 p = dir * 10.0;
+            // Biomechanical veins and arteries
+            vec3 biomechanicalVeins(vec3 dir, float time) {
+                vec3 p = dir * 8.0;
                 
-                // Multi-layer nebula
-                float n1 = noise3D(p + time * 0.1);
-                float n2 = noise3D(p * 2.0 + time * 0.15);
-                float n3 = noise3D(p * 4.0 - time * 0.05);
+                // Main arterial network
+                float veins1 = fbm3d(p + time * 0.1);
+                float veins2 = fbm3d(p * 2.5 + time * 0.08);
+                float veins3 = fbm3d(p * 6.0 - time * 0.05);
                 
-                float nebulaMask = n1 * 0.6 + n2 * 0.3 + n3 * 0.1;
-                nebulaMask = smoothstep(0.3, 0.8, nebulaMask);
+                // Create vein-like structures
+                float veinMask = pow(abs(sin(veins1 * 6.28 + time)), 0.1) * 
+                                pow(abs(sin(veins2 * 8.0)), 0.2) *
+                                smoothstep(0.6, 0.9, veins3);
                 
-                // Nebula colors
-                vec3 color1 = vec3(0.2, 0.1, 0.8); // Deep blue
-                vec3 color2 = vec3(0.8, 0.2, 0.4); // Pink
-                vec3 color3 = vec3(0.1, 0.6, 0.3); // Green
+                // Pulsing blood/ichor flow
+                float pulse = sin(time * 3.0 + veins1 * 10.0) * 0.5 + 0.5;
                 
-                vec3 nebulaColor = mix(color1, color2, sin(time * 0.5 + n1 * 5.0) * 0.5 + 0.5);
-                nebulaColor = mix(nebulaColor, color3, n2);
+                // Alien blood colors
+                vec3 ichor = vec3(0.8, 0.1, 0.0); // Deep red
+                vec3 plasma = vec3(0.2, 0.8, 0.1); // Sickly green
+                vec3 corruption = vec3(0.6, 0.0, 0.9); // Purple corruption
                 
-                return nebulaColor * nebulaMask * nebulaDensity;
+                vec3 veinColor = mix(ichor, plasma, sin(time * 0.7 + veins2 * 3.0) * 0.5 + 0.5);
+                veinColor = mix(veinColor, corruption, corruptionLevel);
+                
+                return veinColor * veinMask * pulse * veinPulsing;
             }
             
-            // Cosmic storm effects
-            vec3 cosmicStorm(vec3 dir, float time, float intensity) {
+            // Nightmare consumption effect
+            vec3 nightmareConsumption(vec3 dir, float time, float intensity) {
                 if(intensity < 0.01) return vec3(0.0);
                 
-                vec3 p = dir * 5.0;
-                float storm = noise3D(p + time * 0.8);
-                storm = pow(storm, 2.0);
+                vec3 p = dir * 3.0;
                 
-                // Lightning-like effects
-                float lightning = 0.0;
-                if(storm > 0.7) {
-                    lightning = sin(time * 50.0 + storm * 10.0) * 0.5 + 0.5;
-                    lightning = pow(lightning, 10.0);
+                // Writhing tentacle-like structures
+                float tentacles = fbm3d(p + time * 1.2);
+                tentacles = pow(tentacles, 3.0);
+                
+                // Consuming maw effects
+                float maw = 0.0;
+                if(tentacles > 0.8) {
+                    float teeth = sin(tentacles * 50.0 + time * 20.0);
+                    maw = max(0.0, teeth) * sin(time * 30.0 + tentacles * 15.0);
+                    maw = pow(maw, 5.0);
                 }
                 
-                vec3 stormColor = vec3(1.0, 0.8, 0.2) * lightning;
-                stormColor += vec3(0.5, 0.1, 0.8) * storm * 0.3;
+                // Digestive acid colors
+                vec3 acidColor = vec3(1.0, 0.8, 0.0) * maw;
+                acidColor += vec3(0.9, 0.2, 0.1) * tentacles * 0.4;
+                acidColor += vec3(0.1, 0.9, 0.3) * pow(tentacles, 2.0) * 0.2;
                 
-                return stormColor * intensity;
+                return acidColor * intensity;
             }
             
-            // Aurora effects
-            vec3 aurora(vec3 dir, float time) {
-                float y = dir.y;
-                if(y < 0.1) return vec3(0.0);
+            // Void tears in reality
+            vec3 voidTears(vec3 dir, float time) {
+                vec2 uv = vec2(atan(dir.z, dir.x), asin(dir.y));
                 
-                vec2 uv = vec2(atan(dir.z, dir.x) * 0.5, y);
+                // Reality distortion
+                float distortion = fbm(uv * 15.0 + time * 0.4);
                 
-                float wave1 = sin(uv.x * 10.0 + time * 2.0) * 0.1;
-                float wave2 = sin(uv.x * 20.0 - time * 1.5) * 0.05;
-                float auroraY = uv.y + wave1 + wave2;
+                // Tears in spacetime
+                float tear1 = abs(sin(uv.x * 20.0 + time * 3.0)) < 0.02 ? 1.0 : 0.0;
+                float tear2 = abs(sin(uv.y * 15.0 - time * 2.0)) < 0.03 ? 1.0 : 0.0;
                 
-                float auroral = smoothstep(0.2, 0.4, auroraY) * smoothstep(0.8, 0.6, auroraY);
-                auroral *= fbm(uv * 5.0 + time * 0.3);
+                float voidMask = (tear1 + tear2) * smoothstep(0.4, 0.8, distortion);
                 
-                vec3 auroraColor = vec3(0.2, 1.0, 0.3); // Green
-                auroraColor = mix(auroraColor, vec3(0.8, 0.2, 1.0), sin(time + uv.x * 5.0)); // Purple
+                // What lurks beyond
+                vec3 voidColor = vec3(0.0, 0.0, 0.0); // Pure void
+                vec3 beyondColor = vec3(1.0, 0.0, 1.0); // Impossible colors
                 
-                return auroraColor * auroral * 0.8;
+                float flicker = sin(time * 60.0 + distortion * 20.0) * 0.5 + 0.5;
+                vec3 tearColor = mix(voidColor, beyondColor, flicker);
+                
+                return tearColor * voidMask;
+            }
+            
+            // Alien infection spreading
+            vec3 alienInfection(vec3 dir, float time) {
+                vec3 p = dir * 5.0;
+                
+                // Infection spread pattern
+                float infection = fbm3d(p + time * 0.6);
+                infection = smoothstep(0.3, 0.7, infection);
+                
+                // Spore-like particles
+                float spores = noise3d(p * 20.0 + time * 2.0);
+                spores = step(0.95, spores);
+                
+                // Mycelium network
+                float network = fbm3d(p * 8.0) * fbm3d(p * 12.0 + time * 0.3);
+                
+                vec3 infectionColor = vec3(0.1, 0.6, 0.2); // Sickly green
+                vec3 sporeColor = vec3(0.8, 0.8, 0.2); // Yellow spores
+                vec3 networkColor = vec3(0.3, 0.1, 0.7); // Purple networks
+                
+                vec3 finalInfection = infectionColor * infection +
+                                    sporeColor * spores * 2.0 +
+                                    networkColor * network * 0.5;
+                
+                return finalInfection * biomassGrowth;
             }
             
             void main(void) {
                 vec3 dir = normalize(vDirectionW);
                 
-                // Base space color (deep space)
-                vec3 baseColor = vec3(0.01, 0.02, 0.05);
+                // Base nightmare void color
+                vec3 baseColor = vec3(0.02, 0.01, 0.03);
                 
-                // Add stars
-                vec2 starUV = vec2(atan(dir.z, dir.x), asin(dir.y));
-                float starField = stars(starUV * 50.0, 200.0);
-                vec3 starColor = vec3(1.0) * starField * starBrightness;
+                // Distortion from vertex shader affects color intensity
+                float distortionEffect = vDistortion * 5.0;
                 
-                // Add smaller background stars
-                starField += stars(starUV * 100.0, 500.0) * 0.3;
-                starColor += vec3(0.8, 0.9, 1.0) * stars(starUV * 200.0, 1000.0) * 0.1;
+                // Add alien star parasites
+                vec2 parasiteUV = vec2(atan(dir.z, dir.x), asin(dir.y));
+                float alienParasites = alienStars(parasiteUV * 30.0, 150.0);
+                vec3 parasiteColor = vec3(0.8, 0.2, 0.9) * alienParasites * (1.0 + distortionEffect);
                 
-                // Add nebula
-                vec3 nebulaColor = nebula(dir, time);
+                // Add smaller infection nodes
+                parasiteColor += vec3(0.2, 0.9, 0.1) * alienStars(parasiteUV * 80.0, 400.0) * 0.4;
                 
-                // Add cosmic storm
-                vec3 stormColor = cosmicStorm(dir, time, cosmicStormIntensity);
+                // Add biomechanical veins
+                vec3 veinColor = biomechanicalVeins(dir, time);
                 
-                // Add aurora (only visible in certain directions)
-                vec3 auroraColor = aurora(dir, time);
+                // Add nightmare consumption
+                vec3 consumptionColor = nightmareConsumption(dir, time, corruptionLevel);
                 
-                // Combine all effects
-                vec3 finalColor = baseColor + starColor + nebulaColor + stormColor + auroraColor;
+                // Add void tears
+                vec3 voidColor = voidTears(dir, time);
                 
-                // Color shift for different weather moods
-                finalColor = mix(finalColor, finalColor.gbr, colorShift * 0.3);
+                // Add alien infection
+                vec3 infectionColor = alienInfection(dir, time);
                 
-                // Atmospheric scattering effect
-                float atmosphere = pow(max(0.0, dir.y + 0.2), 0.5) * 0.1;
-                finalColor += vec3(0.1, 0.2, 0.4) * atmosphere;
+                // Combine all nightmare effects
+                vec3 finalColor = baseColor + parasiteColor + veinColor + 
+                                consumptionColor + voidColor + infectionColor;
                 
-                // HDR tone mapping
-                finalColor = finalColor / (finalColor + vec3(1.0));
-                finalColor = pow(finalColor, vec2(1.0/2.2).xxx);
+                // Breathing modulation
+                float breatheMod = 1.0 + sin(time * 0.8) * alienBreathing * 0.2;
+                finalColor *= breatheMod;
+                
+                // Corruption shift - makes everything more wrong
+                finalColor = mix(finalColor, finalColor.rbg * vec3(1.2, 0.8, 1.5), corruptionLevel * 0.4);
+                
+                // Add organic rim lighting effect
+                float rim = 1.0 - abs(dot(dir, normalize(vNormalW)));
+                rim = pow(rim, 2.0);
+                finalColor += vec3(0.3, 0.1, 0.2) * rim * biomassGrowth * 0.3;
+                
+                // Nightmare HDR tone mapping - keeps the horror vivid
+                finalColor = finalColor / (finalColor + vec3(0.7));
+                finalColor = pow(finalColor, vec3(1.0/1.8)); // Darker gamma for horror
+                
+                // Subtle film grain for unease
+                float grain = hash21(gl_FragCoord.xy + time) * 0.02;
+                finalColor += grain;
                 
                 gl_FragColor = vec4(finalColor, 1.0);
             }
         `;
 
         // Create shader material
-        this.material = new BABYLON.ShaderMaterial("spaceShader", this.scene, {
+        this.material = new BABYLON.ShaderMaterial("nightmareShader", this.scene, {
             vertex: "custom",
             fragment: "custom"
         }, {
             attributes: ["position", "normal"],
             uniforms: ["world", "worldView", "worldViewProjection", 
-                      "time", "nebulaDensity", "starBrightness", 
-                      "cosmicStormIntensity", "colorShift", "cameraPosition"]
+                      "time", "biomassGrowth", "veinPulsing", 
+                      "corruptionLevel", "alienBreathing", "cameraPosition"]
         });
 
         // Store shaders
@@ -264,10 +374,10 @@ class ProceduralSpaceSky {
         if (!this.material) return;
         
         this.material.setFloat("time", this.time);
-        this.material.setFloat("nebulaDensity", this.weatherState.nebulaDensity);
-        this.material.setFloat("starBrightness", this.weatherState.starBrightness);
-        this.material.setFloat("cosmicStormIntensity", this.weatherState.cosmicStormIntensity);
-        this.material.setFloat("colorShift", this.weatherState.colorShift);
+        this.material.setFloat("biomassGrowth", this.weatherState.biomassGrowth);
+        this.material.setFloat("veinPulsing", this.weatherState.veinPulsing);
+        this.material.setFloat("corruptionLevel", this.weatherState.corruptionLevel);
+        this.material.setFloat("alienBreathing", this.weatherState.alienBreathing);
         this.material.setVector3("cameraPosition", this.scene.activeCamera.position);
     }
 
@@ -279,38 +389,38 @@ class ProceduralSpaceSky {
     }
 
     startWeatherCycle() {
-        // Change weather every 30-60 seconds
+        // Change weather every 20-45 seconds for more unsettling experience
         setInterval(() => {
-            this.changeWeather();
-        }, Math.random() * 30000 + 30000);
+            this.evolveHorror();
+        }, Math.random() * 25000 + 20000);
     }
 
-    changeWeather() {
-        const weatherTypes = ['clear', 'nebular', 'storm', 'aurora'];
-        const newWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+    evolveHorror() {
+        const horrorStates = ['dormant', 'infected', 'consuming', 'nightmare', 'void'];
+        const newHorror = horrorStates[Math.floor(Math.random() * horrorStates.length)];
         
-        console.log(`Weather changing to: ${newWeather}`);
-        this.transitionToWeather(newWeather);
+        console.log(`The nightmare evolves to: ${newHorror}`);
+        this.transitionToHorror(newHorror);
     }
 
-    transitionToWeather(weatherType) {
-        const duration = 5000; // 5 seconds transition
+    transitionToHorror(horrorType) {
+        const duration = 8000; // 8 seconds transition for more dread
         const startTime = Date.now();
         
         const startState = { ...this.weatherState };
-        const targetState = this.getWeatherState(weatherType);
+        const targetState = this.getHorrorState(horrorType);
         
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            const eased = this.easeInOutQuad(progress);
+            const eased = this.easeInOutCubic(progress); // More dramatic easing
             
             // Interpolate between start and target states
-            this.weatherState.nebulaDensity = this.lerp(startState.nebulaDensity, targetState.nebulaDensity, eased);
-            this.weatherState.starBrightness = this.lerp(startState.starBrightness, targetState.starBrightness, eased);
-            this.weatherState.cosmicStormIntensity = this.lerp(startState.cosmicStormIntensity, targetState.cosmicStormIntensity, eased);
-            this.weatherState.colorShift = this.lerp(startState.colorShift, targetState.colorShift, eased);
-            this.weatherState.weatherType = weatherType;
+            this.weatherState.biomassGrowth = this.lerp(startState.biomassGrowth, targetState.biomassGrowth, eased);
+            this.weatherState.veinPulsing = this.lerp(startState.veinPulsing, targetState.veinPulsing, eased);
+            this.weatherState.corruptionLevel = this.lerp(startState.corruptionLevel, targetState.corruptionLevel, eased);
+            this.weatherState.alienBreathing = this.lerp(startState.alienBreathing, targetState.alienBreathing, eased);
+            this.weatherState.weatherType = horrorType;
             
             if (progress < 1) {
                 requestAnimationFrame(animate);
@@ -320,35 +430,41 @@ class ProceduralSpaceSky {
         animate();
     }
 
-    getWeatherState(weatherType) {
+    getHorrorState(horrorType) {
         const states = {
-            clear: {
-                nebulaDensity: 0.2,
-                starBrightness: 1.0,
-                cosmicStormIntensity: 0.0,
-                colorShift: 0.0
+            dormant: {
+                biomassGrowth: 0.1,
+                veinPulsing: 0.3,
+                corruptionLevel: 0.0,
+                alienBreathing: 0.1
             },
-            nebular: {
-                nebulaDensity: 0.8,
-                starBrightness: 0.3,
-                cosmicStormIntensity: 0.0,
-                colorShift: 0.2
+            infected: {
+                biomassGrowth: 0.6,
+                veinPulsing: 0.8,
+                corruptionLevel: 0.2,
+                alienBreathing: 0.3
             },
-            storm: {
-                nebulaDensity: 0.4,
-                starBrightness: 0.1,
-                cosmicStormIntensity: 0.9,
-                colorShift: 0.8
+            consuming: {
+                biomassGrowth: 0.4,
+                veinPulsing: 1.2,
+                corruptionLevel: 0.9,
+                alienBreathing: 0.6
             },
-            aurora: {
-                nebulaDensity: 0.1,
-                starBrightness: 0.6,
-                cosmicStormIntensity: 0.0,
-                colorShift: -0.3
+            nightmare: {
+                biomassGrowth: 0.9,
+                veinPulsing: 0.4,
+                corruptionLevel: 0.7,
+                alienBreathing: 0.9
+            },
+            void: {
+                biomassGrowth: 0.2,
+                veinPulsing: 0.1,
+                corruptionLevel: 1.0,
+                alienBreathing: 0.2
             }
         };
         
-        return states[weatherType] || states.clear;
+        return states[horrorType] || states.dormant;
     }
 
     // Utility functions
@@ -356,47 +472,65 @@ class ProceduralSpaceSky {
         return a + (b - a) * t;
     }
 
-    easeInOutQuad(t) {
-        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
-    // Public API methods
-    setWeatherType(weatherType) {
-        this.transitionToWeather(weatherType);
+    // Public API methods for controlling the nightmare
+    setHorrorType(horrorType) {
+        this.transitionToHorror(horrorType);
     }
 
-    setStormIntensity(intensity) {
-        this.weatherState.cosmicStormIntensity = Math.max(0, Math.min(1, intensity));
+    setCorruptionLevel(level) {
+        this.weatherState.corruptionLevel = Math.max(0, Math.min(1, level));
     }
 
-    setNebulaDensity(density) {
-        this.weatherState.nebulaDensity = Math.max(0, Math.min(1, density));
+    setBiomassGrowth(growth) {
+        this.weatherState.biomassGrowth = Math.max(0, Math.min(1, growth));
     }
 
-    setStarBrightness(brightness) {
-        this.weatherState.starBrightness = Math.max(0, Math.min(2, brightness));
+    setVeinPulsing(intensity) {
+        this.weatherState.veinPulsing = Math.max(0, Math.min(2, intensity));
+    }
+
+    setAlienBreathing(breathing) {
+        this.weatherState.alienBreathing = Math.max(0, Math.min(1, breathing));
+    }
+
+    // Trigger specific nightmare events
+    triggerConsumption() {
+        this.setHorrorType('consuming');
+    }
+
+    triggerInfection() {
+        this.setHorrorType('infected');
+    }
+
+    triggerVoidTear() {
+        this.setHorrorType('void');
     }
 }
 
 // Updated createSkybox function
 function createSkybox(scene) {
-    // Create the procedural space sky
-    const spaceSky = new ProceduralSpaceSky(scene);
+    // Create the nightmare space sky
+    const nightmareSky = new NightmareSpaceSky(scene);
     
-    // Optional: Add manual weather control
-    window.spaceSky = spaceSky; // For debugging/manual control
+    // Optional: Add manual horror control
+    window.nightmareSky = nightmareSky; // For debugging/manual control
     
-    // Example of manual weather changes (remove if not needed)
+    // Example of manual horror evolution (remove if not needed)
     /*
-    setTimeout(() => spaceSky.setWeatherType('storm'), 10000);
-    setTimeout(() => spaceSky.setWeatherType('nebular'), 20000);
-    setTimeout(() => spaceSky.setWeatherType('aurora'), 30000);
+    setTimeout(() => nightmareSky.setHorrorType('infected'), 10000);
+    setTimeout(() => nightmareSky.setHorrorType('consuming'), 25000);
+    setTimeout(() => nightmareSky.setHorrorType('nightmare'), 40000);
+    setTimeout(() => nightmareSky.setHorrorType('void'), 55000);
     */
     
-    return spaceSky;
+    return nightmareSky;
 }
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ProceduralSpaceSky, createSkybox };
+    module.exports = { NightmareSpaceSky, createSkybox };
 }
