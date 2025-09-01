@@ -15,6 +15,8 @@ class TowerDefenseGame {
         // Game state
         this.gold = 1000;
         this.lives = 50;
+        this.playerHealth = 100;
+        this.maxPlayerHealth = 100;
         this.score = 0;
         this.wave = 0;
         this.enemiesInWave = 4;
@@ -62,6 +64,10 @@ class TowerDefenseGame {
         this.lore4Played = false; // Flag for lore4.mp3 to play once
         this.lore5Played = false; // Flag for lore5.mp3 to play once
         this.pauseMenu = null; // New pause menu instance
+        this.sfx1Sound = null;
+        this.towerPlacedCount = 0;
+        this.loreEggMesh = null; // To store the lore egg mesh
+        this.loreEggCollected = false; // To track if the lore egg has been collected
 
         // Game objects
         this.towers = [];
@@ -187,7 +193,25 @@ class TowerDefenseGame {
         await this.createScene();
         this.weatherSystem = new WeatherSystem(this.scene);
         this.createTerrain();
-        SprawlingPlant.spawnEcosystem(this.scene, 1, 200);
+        this.spawnLoreEgg(); // Spawn the lore egg
+        const sprawlingPlantPosition = new BABYLON.Vector3(-80, 0, 0);
+        const sprawlingPlantConfig = {
+            growthRate: (0.02 + Math.random() * 0.03) / 10,
+            maturityAge: 60, // 1 minute
+            spreadChance: 0.1,
+            maxOffspring: 1, // So it only turns into 2
+        };
+        new SprawlingPlant(this.scene, sprawlingPlantPosition, sprawlingPlantConfig);
+
+        const predatoryThornvinePosition = new BABYLON.Vector3(80, 0, 0);
+        const predatoryThornvineConfig = {
+            growthRate: (0.08 + Math.random() * 0.05) / 10,
+            maturityAge: 60, // 1 minute
+            spreadChance: 0.1,
+            maxOffspring: 1,
+        };
+        new PredatoryThornvine(this.scene, predatoryThornvinePosition, predatoryThornvineConfig);
+        spawnTentacleOrbs(this.scene, 3, 200);
         this.createEnhancedPath();
         this.createCamera();
         this.setupControls();
@@ -204,6 +228,7 @@ class TowerDefenseGame {
         this.lore3Sound = document.getElementById('lore3Sound'); // Initialize lore3Sound
         this.lore4Sound = document.getElementById('lore4Sound'); // Initialize lore4Sound
         this.lore5Sound = document.getElementById('lore5Sound'); // Initialize lore5Sound
+        this.sfx1Sound = document.getElementById('sfx1Sound');
         
         // Initialize pause menu
         this.pauseMenu = new PauseMenu(this); // Pass game instance to pause menu
@@ -213,6 +238,60 @@ class TowerDefenseGame {
         document.getElementById('controls').style.display = 'block';
         document.getElementById('waveInfo').style.display = 'block';
         
+        // Create and add hands.png overlay
+        const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        const handsContainer = new BABYLON.GUI.Rectangle("handsContainer");
+        handsContainer.width = "50%";
+        handsContainer.height = "50%";
+        handsContainer.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        handsContainer.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+        handsContainer.thickness = 0;
+        advancedTexture.addControl(handsContainer);
+
+        const handsImage = new BABYLON.GUI.Image("hands", "assets/images/hands.png");
+        handsImage.width = "100%";
+        handsImage.height = "100%";
+        handsImage.alpha = 0.5; // Adjust transparency as needed
+        handsContainer.addControl(handsImage);
+        this.handsImage = handsImage; // Make handsImage accessible as a class property
+
+        // Add more robust animation to handsImage
+        // Scale animation
+        const scaleAnimation = new BABYLON.Animation(
+            "handsScaleAnimation",
+            "scaleY",
+            30, // frames per second
+            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+        );
+        const scaleKeys = [];
+        scaleKeys.push({ frame: 0, value: 1.0 });
+        scaleKeys.push({ frame: 30, value: 1.02 }); // Slight pulse up
+        scaleKeys.push({ frame: 60, value: 1.0 });
+        scaleAnimation.setKeys(scaleKeys);
+
+        // Opacity animation
+        const opacityAnimation = new BABYLON.Animation(
+            "handsOpacityAnimation",
+            "alpha",
+            30, // frames per second
+            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+        );
+        const opacityKeys = [];
+        opacityKeys.push({ frame: 0, value: 0.5 });
+        opacityKeys.push({ frame: 20, value: 0.45 }); // Subtle flicker
+        opacityKeys.push({ frame: 40, value: 0.55 });
+        opacityKeys.push({ frame: 60, value: 0.5 });
+        opacityAnimation.setKeys(opacityKeys);
+
+        // Attach and play animations
+        this.scene.beginDirectAnimation(handsImage, [scaleAnimation, opacityAnimation], 0, 60, true);
+
+        // Add LED dots to handsImage
+        this.createLedDots(handsContainer);
+
         // Setup collapsible menu
         const toggleWeaponSystemsBtn = document.getElementById('toggleWeaponSystems');
         const weaponSystemsContent = document.getElementById('weaponSystemsContent');
@@ -273,6 +352,7 @@ class TowerDefenseGame {
 
         if (meshes.length > 0) {
             this.ground = meshes[0];
+            this.ground.name = "ground"; // Explicitly set the name to "ground"
             console.log("🌱 Terrain loaded from map.glb", this.ground);
 
         } else {
@@ -361,6 +441,26 @@ class TowerDefenseGame {
             if (e.code === 'Escape') {
                 document.exitPointerLock();
             }
+
+            // Lore egg pickup with 'E' key
+            if (e.code === 'KeyE') {
+                if (this.isPaused || this.loreEggCollected) return;
+
+                const ray = this.scene.createPickingRay(
+                    this.scene.pointerX,
+                    this.scene.pointerY,
+                    BABYLON.Matrix.Identity(),
+                    this.camera
+                );
+                const hit = this.scene.pickWithRay(ray);
+
+                if (hit.hit && hit.pickedMesh && hit.pickedMesh.name === "loreEgg") {
+                    this.loreEggCollected = true;
+                    this.loreEggMesh.dispose();
+                    this.unlockNextLore();
+                    console.log("🥚 Lore egg collected with E key!");
+                }
+            }
         });
         
         window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
@@ -369,6 +469,24 @@ class TowerDefenseGame {
         this.canvas.addEventListener('click', () => {
             if (this.isPaused) return;
             
+            // Trigger hands flicker animation on click
+            if (this.handsImage) {
+                const clickFlickerAnimation = new BABYLON.Animation(
+                    "handsClickFlickerAnimation",
+                    "alpha",
+                    30, // frames per second
+                    BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+                    BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT // Play once
+                );
+                const flickerKeys = [];
+                flickerKeys.push({ frame: 0, value: this.handsImage.alpha }); // Start from current alpha
+                flickerKeys.push({ frame: 5, value: 0.2 }); // Briefly go very transparent
+                flickerKeys.push({ frame: 10, value: this.handsImage.alpha }); // Return to original alpha
+                clickFlickerAnimation.setKeys(flickerKeys);
+
+                this.scene.beginDirectAnimation(this.handsImage, [clickFlickerAnimation], 0, 10, false); // Play once
+            }
+
             if (!this.isPointerLocked) {
                 this.canvas.requestPointerLock();
             } else {
@@ -383,7 +501,8 @@ class TowerDefenseGame {
                 document.body.style.cursor = 'none'; // Hide cursor when pointer is locked
                 document.getElementById('crosshair').style.display = 'block'; // Show crosshair
             } else {
-                document.body.style.cursor = 'default'; // Show default cursor when pointer is unlocked
+                // When not pointer locked, the body's default cursor (set in CSS) will be used.
+                document.body.style.cursor = ''; // Reset to default (which is now custom_cursor.png from CSS)
                 document.getElementById('crosshair').style.display = 'none'; // Hide crosshair
             }
         });
@@ -453,6 +572,7 @@ class TowerDefenseGame {
     updateUI() {
         document.getElementById('gold').textContent = this.gold;
         document.getElementById('lives').textContent = this.lives;
+        document.getElementById('playerHealth').textContent = this.playerHealth;
         document.getElementById('score').textContent = this.score;
         document.getElementById('waveNumber').textContent = this.wave;
         document.getElementById('enemiesLeft').textContent = Math.max(0, this.enemiesInWave - this.enemiesSpawned);
@@ -543,6 +663,13 @@ class TowerDefenseGame {
                     this.gold -= itemData.cost;
                     this.updateUI();
                     console.log(`🏗️ Built ${itemData.name} tower for ${itemData.cost}!`);
+
+                    this.towerPlacedCount++;
+                    if (this.towerPlacedCount === 5) {
+                        if (this.sfx1Sound) {
+                            this.sfx1Sound.play().catch(e => console.error("Error playing sfx1 audio:", e));
+                        }
+                    }
                 }
             }
             else {
@@ -558,21 +685,21 @@ class TowerDefenseGame {
             const dracoFileName = fileName.replace(".glb", "_draco.glb");
             BABYLON.SceneLoader.ImportMesh("", path, dracoFileName, this.scene, (meshes) => {
                 if (meshes.length > 0) {
-                    console.log(`Successfully loaded Draco compressed model: ${dracoFileName}`);
+                    console.log(`loadModel: Successfully loaded Draco compressed model: ${dracoFileName}`, meshes);
                     resolve(meshes);
                 }
             }, null, (scene, message, exception) => {
-                console.log(`Draco model not found, falling back to standard GLB: ${fileName}`);
+                console.log(`loadModel: Draco model not found, falling back to standard GLB: ${fileName}`);
                 BABYLON.SceneLoader.ImportMesh("", path, fileName, this.scene, (meshes) => {
                     if (meshes.length > 0) {
-                        console.log(`Successfully loaded standard model: ${fileName}`);
+                        console.log(`loadModel: Successfully loaded standard model: ${fileName}`, meshes);
                         resolve(meshes);
                     } else {
-                        console.error(`Failed to load model: ${fileName}`);
+                        console.error(`loadModel: Failed to load model: ${fileName}`);
                         reject(`Failed to load model: ${fileName}`);
                     }
                 }, null, (scene, message, exception) => {
-                    console.error(`Failed to load model: ${fileName}`, exception);
+                    console.error(`loadModel: Failed to load model: ${fileName}`, exception);
                     reject(`Failed to load model: ${fileName}`);
                 });
             });
@@ -595,7 +722,9 @@ class TowerDefenseGame {
         }
 
         const meshes = await this.loadModel("assets/models/", modelFileName);
+        console.log(`createTower: Loaded meshes for ${modelFileName}:`, meshes);
         const towerMesh = meshes[0];
+        console.log(`createTower: towerMesh for ${modelFileName}:`, towerMesh);
         towerMesh.position = position.clone();
         towerMesh.position.y = 1;
 
@@ -605,15 +734,135 @@ class TowerDefenseGame {
             type: type,
             data: towerData,
             lastFired: 0,
-            target: null
+            target: null,
+            health: 100,
+            maxHealth: 100
         };
+        this.createTowerHealthBar(tower);
         return tower;
+    }
+
+    createTowerHealthBar(tower) {
+        const healthBar = BABYLON.MeshBuilder.CreatePlane("towerHealthBar", {width: 2, height: 0.3}, this.scene);
+        healthBar.position.y = 4;
+        healthBar.parent = tower.base;
+        healthBar.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+        
+        const healthMat = new BABYLON.StandardMaterial("towerHealthMat", this.scene);
+        healthMat.diffuseColor = new BABYLON.Color3(0, 1, 0);
+        healthMat.emissiveColor = new BABYLON.Color3(0, 0.3, 0);
+        healthBar.material = healthMat;
+        
+        tower.healthBar = healthBar;
     }
 
     async createColony(position) {
         const colony = new Colony(this.scene, position, this);
         await colony.loadModel();
         return colony;
+    }
+
+    createLedDots(container) {
+        const dotSize = 0.03; // Size of each LED dot as a percentage of handsImage's smaller dimension
+        const dotColor = new BABYLON.Color3(0, 1, 0); // Green color for LEDs
+        const glowColor = new BABYLON.Color4(0, 1, 0, 0.5); // Semi-transparent green for glow
+
+        const handPositions = [
+            { x: 0.35, y: 0.65 }, // Left hand Dot 1
+            { x: 0.3, y: 0.7 },  // Left hand Dot 2
+            { x: 0.25, y: 0.65 }, // Left hand Dot 3
+
+            { x: 0.65, y: 0.65 }, // Right hand Dot 1
+            { x: 0.7, y: 0.7 },  // Right hand Dot 2
+            { x: 0.75, y: 0.65 }   // Right hand Dot 3
+        ];
+
+        handPositions.forEach((pos, index) => {
+            const dot = new BABYLON.GUI.Ellipse(`ledDot${index}`, "100%", "100%");
+            dot.width = `${dotSize * 100}%`;
+            dot.height = `${dotSize * 100}%`;
+            dot.thickness = 0;
+            dot.background = dotColor.toHexString();
+            dot.color = dotColor.toHexString();
+
+            dot.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+            dot.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+            dot.left = `${pos.x * 100}%`;
+            dot.top = `${pos.y * 100}%`;
+
+            dot.shadowColor = glowColor;
+            dot.shadowBlur = 10;
+            dot.shadowOffsetX = 0;
+            dot.shadowOffsetY = 0;
+
+            container.addControl(dot);
+
+            const dotPulseAnimation = new BABYLON.Animation(
+                `ledDotPulseAnimation${index}`,
+                "alpha",
+                30,
+                BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+                BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+            );
+            const dotPulseKeys = [];
+            dotPulseKeys.push({ frame: 0, value: 1.0 });
+            dotPulseKeys.push({ frame: 15, value: 0.3 });
+            dotPulseKeys.push({ frame: 30, value: 1.0 });
+            dotPulseAnimation.setKeys(dotPulseKeys);
+
+            this.scene.beginDirectAnimation(dot, [dotPulseAnimation], 0, 30, true);
+        });
+    }
+
+    async spawnLoreEgg() {
+        if (this.loreEggCollected) return; // Don't spawn if already collected
+
+        const eggPosition = new BABYLON.Vector3(-75, 1, 5); // Example position, adjust as needed
+        const meshes = await this.loadModel("assets/models/", "egg.glb");
+        if (meshes.length > 0) {
+            this.loreEggMesh = meshes[0];
+            this.loreEggMesh.position = eggPosition;
+            this.loreEggMesh.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5); // Adjust size as needed
+            this.loreEggMesh.name = "loreEgg"; // Give it a name for identification
+
+            // Create a glowing material
+            const glowMaterial = new BABYLON.StandardMaterial("glowMat", this.scene);
+            glowMaterial.emissiveColor = new BABYLON.Color3(1, 0.5, 0); // Orange glow
+            glowMaterial.diffuseColor = new BABYLON.Color3(0.8, 0.4, 0);
+            this.loreEggMesh.material = glowMaterial;
+
+            // Add a highlight layer for more prominent glow
+            const hl = new BABYLON.HighlightLayer("hl1", this.scene);
+            hl.addMesh(this.loreEggMesh, BABYLON.Color3.FromHexString("#FFD700")); // Gold color glow
+
+            console.log("🥚 Lore egg spawned!");
+        } else {
+            console.error("❌ Failed to load egg.glb");
+        }
+    }
+
+    unlockNextLore() {
+        if (this.loreEggCollected) return; // Only unlock if egg is present and not collected
+
+        if (this.currentLoreIndex < this.loreContent.length) {
+            const loreText = this.loreContent[this.currentLoreIndex];
+            this.unlockedLore.push(loreText);
+            console.log(`📜 Lore Unlocked: ${loreText}`);
+
+            // Play corresponding lore audio
+            const loreAudio = this[`lore${this.currentLoreIndex + 1}Sound`];
+            if (loreAudio) {
+                loreAudio.play().catch(e => console.error(`Error playing lore audio ${this.currentLoreIndex + 1}:`, e));
+            }
+
+            this.currentLoreIndex++;
+            // Optionally, update pause menu here (will be implemented later)
+            if (this.pauseMenu) {
+                this.pauseMenu.updateLoreTerminal(this.unlockedLore);
+            }
+        } else {
+            console.log("All lore elements unlocked!");
+        }
     }
 
     startGameLoop() {
@@ -690,6 +939,15 @@ class TowerDefenseGame {
                 // Smoothly interpolate to the target height
                 this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
             }
+        }
+
+        // Hands movement based on walking
+        if (this.handsImage) {
+            const isMoving = (this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD']);
+            const targetTop = isMoving ? -30 : -50; // Move down to -30px when walking, up to -50px when idle
+            const currentTop = parseFloat(this.handsImage.top || -50); // Default to -50 if not set
+            const newTop = currentTop + (targetTop - currentTop) * 0.1; // Smooth interpolation
+            this.handsImage.top = `${newTop}px`;
         }
     }
 
@@ -913,6 +1171,9 @@ class TowerDefenseGame {
                 console.log(`💔 Lost a life! Lives remaining: ${this.lives}`);
                 
                 if (this.lives <= 0) {
+                    document.body.style.backgroundImage = 'url(\'assets/images/bg4.jpg\')';
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
                     alert(`💀 GAME OVER!\n\nFinal Score: ${this.score}\nWaves Survived: ${this.wave}\n\nPress OK to restart`);
                     location.reload();
                 }
@@ -973,7 +1234,8 @@ class TowerDefenseGame {
         
         const currentTime = Date.now();
         
-        for (let tower of this.towers) {
+        for (let i = this.towers.length - 1; i >= 0; i--) {
+            const tower = this.towers[i];
             let target = null;
             let closestDist = tower.data.range;
             
@@ -997,6 +1259,21 @@ class TowerDefenseGame {
                     this.fireProjectile(tower);
                     tower.lastFired = currentTime;
                 }
+            }
+
+            // Update health bar
+            if (tower.healthBar) {
+                const healthPercent = tower.health / tower.maxHealth;
+                tower.healthBar.scaling.x = healthPercent;
+                const healthMat = tower.healthBar.material;
+                healthMat.diffuseColor = new BABYLON.Color3(1 - healthPercent, healthPercent, 0);
+                healthMat.emissiveColor = new BABYLON.Color3((1 - healthPercent) * 0.3, healthPercent * 0.3, 0);
+            }
+
+            if (tower.health <= 0) {
+                this.towers.splice(i, 1);
+                tower.base.dispose();
+                tower.healthBar.dispose();
             }
         }
     }
@@ -1162,8 +1439,11 @@ class TowerDefenseGame {
             const waveBonus = 25 + (this.wave * 10);
             this.gold += waveBonus;
             this.score += waveBonus * 5;
-            console.log(`🎉 Wave ${this.wave} complete! +$${waveBonus} bonus`);
+            console.log(`🎉 Wave ${this.wave} complete! +${waveBonus} bonus`);
             this.updateUI();
+            document.body.style.backgroundImage = 'url(\'assets/images/bg4.jpg\')';
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
         }
     }
 
@@ -1214,6 +1494,9 @@ function startNextWave() {
     game.updateUI();
     console.log(`🌊 Wave ${game.wave} starting! ${game.enemiesInWave} incoming`);
     game.playRandomMusic();
+    document.body.style.backgroundImage = 'url(\'assets/images/bg3.jpg\')';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
     
     // Play random lore audio after wave 3 starts
     if (game.wave >= 3) {
