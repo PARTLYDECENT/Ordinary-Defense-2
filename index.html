@@ -845,7 +845,7 @@
                 <h2 class="section-title">WEAPON SYSTEMS</h2>
                 <button class="collapsible-toggle" id="toggleWeaponSystems">▲</button>
             </div>
-            <div class="collapsible-content" id="weaponSystemsContent">
+            <div class="collapsible-content scrollable-content" id="weaponSystemsContent">
                 <div class="tower-grid">
                     <button class="tower-btn" onclick="selectTowerType('basic')" id="basicBtn">
                         <div style="display: flex; align-items: center; gap: 12px;">
@@ -886,6 +886,25 @@
             </div>
         </div>
         
+        <div class="controls-section">
+            <div class="collapsible-header" id="engineeringHeader">
+                <h2 class="section-title">ENGINEERING</h2>
+                <button class="collapsible-toggle" id="toggleEngineering">▲</button>
+            </div>
+            <div class="collapsible-content scrollable-content" id="engineeringContent">
+                <div class="engineering-unit">
+                    <h3 class="unit-title">RESEARCH STATION</h3>
+                    <p class="unit-description">Unlock new technologies and upgrades.</p>
+                    <button class="buy-btn" onclick="buyResearchStation()">BUY</button>
+                </div>
+                <div class="engineering-unit">
+                    <h3 class="unit-title">FARMING UNIT</h3>
+                    <p class="unit-description">Generate resources over time.</p>
+                    <button class="buy-btn" onclick="buyFarmingUnit()">BUY</button>
+                </div>
+            </div>
+        </div>
+
         <div class="controls-section">
             <h2 class="section-title">CONTROLS</h2>
             <div class="controls-help">

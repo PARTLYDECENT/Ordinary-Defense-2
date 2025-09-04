@@ -68,6 +68,7 @@ class TowerDefenseGame {
         this.towerPlacedCount = 0;
         this.loreEggMesh = null; // To store the lore egg mesh
         this.loreEggCollected = false; // To track if the lore egg has been collected
+        this.farmingInterval = null; // To store the farming unit interval
 
         // Game objects
         this.towers = [];
@@ -75,6 +76,7 @@ class TowerDefenseGame {
         this.projectiles = [];
         this.enemyProjectiles = []; // Added for enemy projectiles
         this.colonies = []; // New: Array to store colonies
+        this.farmingUnits = []; // New: Array to store farming units
         this.path = [];
         this.pathMeshes = [];
         this.ground = null;
@@ -98,11 +100,13 @@ class TowerDefenseGame {
         
         // Tower definitions - rebalanced
         this.towerTypes = {
-            basic: { cost: 40, damage: 25, range: 10, fireRate: 900, color: '#ff6b35', name: 'BASIC' },
-            missile: { cost: 85, damage: 60, range: 12, fireRate: 1400, color: '#e74c3c', name: 'MISSILE' },
-            laser: { cost: 130, damage: 40, range: 18, fireRate: 350, color: '#3498db', name: 'LASER' },
-            colony: { cost: 200, name: 'COLONY' }, // New: Colony definition
-            playerAttack: { cost: 1000, name: 'PLAYER ATTACK' } // New: Player Attack special weapon
+            basic: { cost: 40, damage: 25, range: 30, fireRate: 900, color: '#ff6b35', name: 'BASIC' },
+            missile: { cost: 85, damage: 60, range: 32, fireRate: 1400, color: '#e74c3c', name: 'MISSILE' },
+            laser: { cost: 130, damage: 40, range: 38, fireRate: 350, color: '#3498db', name: 'LASER' },
+            colony: { cost: 20, name: 'COLONY' }, // New: Colony definition
+            playerAttack: { cost: 100, name: 'PLAYER ATTACK' }, // New: Player Attack special weapon
+            researchStation: { cost: 500, name: 'RESEARCH STATION' }, // New: Research Station definition
+            farmingUnit: { cost: 300, name: 'FARMING UNIT' } // New: Farming Unit definition
         };
         
         this.init();
@@ -299,6 +303,15 @@ class TowerDefenseGame {
             toggleWeaponSystemsBtn.addEventListener('click', () => {
                 weaponSystemsContent.classList.toggle('collapsed');
                 toggleWeaponSystemsBtn.textContent = weaponSystemsContent.classList.contains('collapsed') ? '▼' : '▲';
+            });
+        }
+
+        const toggleEngineeringBtn = document.getElementById('toggleEngineering');
+        const engineeringContent = document.getElementById('engineeringContent');
+        if (toggleEngineeringBtn && engineeringContent) {
+            toggleEngineeringBtn.addEventListener('click', () => {
+                engineeringContent.classList.toggle('collapsed');
+                toggleEngineeringBtn.textContent = engineeringContent.classList.contains('collapsed') ? '▼' : '▲';
             });
         }
 
@@ -657,6 +670,28 @@ class TowerDefenseGame {
                     this.updateUI();
                     console.log(`🚀 Activating ${itemData.name} for ${itemData.cost}!`);
                     await this.activatePlayerAttack();
+                } else if (this.selectedTowerType === 'researchStation') {
+                    const researchStationMesh = await this.createResearchStationMesh(position);
+                    this.researchStations.push(researchStationMesh);
+                    this.gold -= itemData.cost;
+                    this.score += 1000; // One-time score bonus
+                    this.updateUI();
+                    console.log(`🔬 Built ${itemData.name} for ${itemData.cost}! Score +1000.`);
+                } else if (this.selectedTowerType === 'farmingUnit') {
+                    const farmingUnitMesh = await this.createFarmingUnitMesh(position);
+                    this.farmingUnits.push(farmingUnitMesh);
+                    this.gold -= itemData.cost;
+                    this.updateUI();
+                    console.log(`🌾 Built ${itemData.name} for ${itemData.cost}!`);
+
+                    // Start gold generation for this unit
+                    if (!this.farmingInterval) { // Only start interval if not already running
+                        this.farmingInterval = setInterval(() => {
+                            this.gold += 10; // Generate 10 gold every 5 seconds
+                            this.updateUI();
+                            console.log("💰 Farming Unit generated 10 gold!");
+                        }, 5000);
+                    }
                 } else {
                     const tower = await this.createTower(position, this.selectedTowerType);
                     this.towers.push(tower);
@@ -671,6 +706,7 @@ class TowerDefenseGame {
                         }
                     }
                 }
+                this.selectTowerType('basic'); // Reset to basic tower after placement
             }
             else {
                 console.log("❌ Invalid placement - too close to path or other structures");
@@ -760,6 +796,14 @@ class TowerDefenseGame {
         const colony = new Colony(this.scene, position, this);
         await colony.loadModel();
         return colony;
+    }
+
+    async createFarmingUnitMesh(position) {
+        const meshes = await this.loadModel("assets/models/", "farm.glb");
+        const farmingUnitMesh = meshes[0];
+        farmingUnitMesh.position = position.clone();
+        farmingUnitMesh.position.y = 1.5; // Adjust Y position as needed for the model
+        return farmingUnitMesh;
     }
 
     createLedDots(container) {
@@ -1528,6 +1572,33 @@ function startNextWave() {
     }
 }
 
+function buyResearchStation() {
+    if (game && !game.isPaused) {
+        const researchStationCost = game.towerTypes.researchStation.cost;
+        if (game.gold >= researchStationCost) {
+            game.gold -= researchStationCost;
+            game.updateUI();
+            game.selectTowerType('researchStation'); // Set selected type for placement
+            console.log(`🔬 Research Station selected for placement. Cost: ${researchStationCost}.`);
+        } else {
+            alert(`Need ${researchStationCost - game.gold} more gold to buy Research Station.`);
+        }
+    }
+}
+
+function buyFarmingUnit() {
+    if (game && !game.isPaused) {
+        const farmingUnitCost = game.towerTypes.farmingUnit.cost;
+        if (game.gold >= farmingUnitCost) {
+            game.gold -= farmingUnitCost;
+            game.updateUI();
+            game.selectTowerType('farmingUnit'); // Set selected type for placement
+            console.log(`🌾 Farming Unit selected for placement. Cost: ${farmingUnitCost}.`);
+        } else {
+            alert(`Need ${farmingUnitCost - game.gold} more gold to buy Farming Unit.`);
+        }
+    }
+}
 
 
 // Initialize game when DOM is loaded
