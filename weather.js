@@ -450,7 +450,7 @@ class WeatherSystem {
 
     adjustAmbientLighting() {
         const intensityMap = {
-            'clear': 0.9,
+            'clear': 0.2, // Drastically reduced to maintain a dark atmosphere
             'storm': 0.4,
             'bloodRain': 0.2,
             'fog': 0.3,

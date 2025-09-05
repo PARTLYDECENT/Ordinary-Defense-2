@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ordinary Demo</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #eee;
+      padding: 20px;
+    }
+    ordinary-element {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌀 Ordinary Framework Demo</h1>
+
+  <p>
+    This is <ordinary-element mode="glitch" colors="red,cyan,magenta,yellow">
+      GLITCHING CONTENT
+    </ordinary-element> in action.
+  </p>
+
+  <p>
+    This is <ordinary-element mode="dream">
+      DREAMING CONTENT
+    </ordinary-element> in action.
+  </p>
+
+  <script>
+    class OrdinaryElement extends HTMLElement {
+      connectedCallback() {
+        const mode = this.getAttribute("mode") || "normal";
+        if (mode === "glitch") this.startGlitch();
+        if (mode === "dream") this.startDream();
+      }
+
+      startGlitch() {
+        const original = this.textContent.trim();
+        const alt = this.getAttribute("alt") || original.split("").reverse().join("");
+        const colors = (this.getAttribute("colors") || "lime,magenta,cyan").split(",");
+        let toggle = false;
+
+        setInterval(() => {
+          this.textContent = toggle ? original : alt;
+          this.style.color = colors[Math.floor(Math.random() * colors.length)];
+          this.style.background = toggle ? "transparent" : "#111";
+          toggle = !toggle;
+        }, 300 + Math.random() * 500);
+      }
+
+      startDream() {
+        const words = (this.textContent.trim() + " fractal cosmic neon void glitch dream").split(" ");
+        setInterval(() => {
+          const newWords = [];
+          for (let i = 0; i < words.length; i++) {
+            if (Math.random() > 0.7) {
+              newWords.push(words[Math.floor(Math.random() * words.length)]);
+            } else {
+              newWords.push(words[i]);
+            }
+          }
+          this.textContent = newWords.join(" ");
+          this.style.color = `hsl(${Math.floor(Math.random() * 360)},100%,70%)`;
+        }, 800);
+      }
+    }
+
+    customElements.define("ordinary-element", OrdinaryElement);
+  </script>
+</body>
+</html>
