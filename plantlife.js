@@ -1443,7 +1443,7 @@
         
         // Create explosive particles
         const deathParticles = new BABYLON.ParticleSystem("deathThrows", 500, this.scene);
-        deathParticles.particleTexture = new BABYLON.Texture("textures/flare.png", this.scene, true, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+        deathParticles.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene, true, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
             null, () => deathParticles.particleTexture = null);
         
         deathParticles.emitter = this.mainBody.position.clone();

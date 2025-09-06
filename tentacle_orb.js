@@ -1118,7 +1118,7 @@ class TentacleOrb {
     createDeathExplosion() {
         // Large explosion particle system
         const explosion = new BABYLON.ParticleSystem("deathExplosion", 200, this.scene);
-        explosion.particleTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/flare.png", this.scene);
+        explosion.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
         explosion.emitter = this.orb;
         
         explosion.minEmitBox = new BABYLON.Vector3(-0.5, -0.5, -0.5);

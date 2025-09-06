@@ -120,6 +120,7 @@ class TowerDefenseGame {
             farmingUnit: { cost: 300, name: 'FARMING UNIT' } // New: Farming Unit definition
         };
         
+        this.isEnhancedWeather = true;
         this.init();
     }
 
@@ -184,6 +185,10 @@ class TowerDefenseGame {
             // Get video elements
             this.introVideo = document.getElementById('introVideo');
             this.videoContainer = document.getElementById('videoContainer');
+            this.loreVideo = document.getElementById('loreVideo');
+            this.loreVideoContainer = document.getElementById('loreVideoContainer');
+            this.lore2Video = document.getElementById('lore2Video');
+            this.lore2VideoContainer = document.getElementById('lore2VideoContainer');
 
             // Hide loading screen immediately
             document.getElementById('loading').style.display = 'none';
@@ -206,8 +211,8 @@ class TowerDefenseGame {
 
         // Create scene and other game elements
         await this.createScene();
-        this.weatherSystem = new WeatherSystem(this.scene);
-        this.createTerrain();
+        this.weatherSystem = new EnhancedWeatherSystem(this.scene, this.engine);
+        await this.createTerrain();
         this.spawnLoreEgg(); // Spawn the lore egg
         const sprawlingPlantPosition = new BABYLON.Vector3(-80, 0, 0);
         const sprawlingPlantConfig = {
@@ -456,12 +461,7 @@ class TowerDefenseGame {
             if (e.code === 'KeyE') {
                 if (this.isPaused) return;
 
-                const ray = this.scene.createPickingRay(
-                    this.scene.pointerX,
-                    this.scene.pointerY,
-                    BABYLON.Matrix.Identity(),
-                    this.camera
-                );
+                const ray = new BABYLON.Ray(this.camera.position, this.camera.getForwardRay().direction);
                 const hit = this.scene.pickWithRay(ray);
 
                 if (hit.hit && hit.pickedMesh) {
@@ -716,6 +716,15 @@ class TowerDefenseGame {
                         this.targetColony = colony;
                         console.log("🎯 First colony placed, setting as target for enemies.");
                     }
+
+                    // Play lore video
+                    if (this.loreVideoContainer && this.loreVideo) {
+                        this.loreVideoContainer.style.display = 'flex';
+                        this.loreVideo.play();
+                        this.loreVideo.onended = () => {
+                            this.loreVideoContainer.style.display = 'none';
+                        };
+                    }
                 } else if (this.selectedTowerType === 'playerAttack') {
                     this.gold -= itemData.cost;
                     this.updateUI();
@@ -744,6 +753,21 @@ class TowerDefenseGame {
                         }, 5000);
                     }
                 } else {
+                    if (this.selectedTowerType === 'basic') {
+                        const basicTowers = this.towers.filter(t => t.type === 'basic');
+                        if (basicTowers.length === 0) {
+                            // This is the first basic tower
+                            // Play lore2.mp4
+                            if (this.lore2VideoContainer && this.lore2Video) {
+                                this.lore2VideoContainer.style.display = 'flex';
+                                this.lore2Video.play();
+                                this.lore2Video.onended = () => {
+                                    this.lore2VideoContainer.style.display = 'none';
+                                };
+                            }
+                        }
+                    }
+
                     const tower = await this.createTower(position, this.selectedTowerType);
                     this.towers.push(tower);
                     this.gold -= itemData.cost;
@@ -1010,26 +1034,17 @@ class TowerDefenseGame {
         }, 900);
     }
 
-    // Robustly dispose an egg and its descendants by index
     disposeEgg(index) {
-        if (!this.loreEggs || typeof index !== 'number' ) return;
-        const egg = this.loreEggs[index];
-        if (!egg) return;
-        try {
-            // dispose any child meshes
-            if (typeof egg.getChildMeshes === 'function') {
-                const children = egg.getChildMeshes(true);
-                children.forEach(m => {
-                    try { if (m && typeof m.isDisposed === 'function') { if (!m.isDisposed()) m.dispose(); } else if (m && typeof m.dispose === 'function') m.dispose(); } catch(e){}
-                });
-            }
-            // dispose the egg root
-            try { if (typeof egg.isDisposed === 'function') { if (!egg.isDisposed()) egg.dispose(); } else if (typeof egg.dispose === 'function') egg.dispose(); } catch(e){}
-        } catch (err) {
-            console.warn('disposeEgg error:', err);
+        console.log("disposeEgg called for index:", index);
+        if (!this.loreEggs || typeof index !== 'number' || !this.loreEggs[index]) {
+            console.log("disposeEgg: invalid index or egg not found");
+            return;
         }
-        // clear reference
+        const egg = this.loreEggs[index];
+        console.log("Disposing egg:", egg.name);
+        egg.dispose();
         this.loreEggs[index] = null;
+        console.log("Egg disposed and reference set to null");
     }
 
     unlockNextLore() {
@@ -1086,7 +1101,7 @@ class TowerDefenseGame {
             this.camera.rotation.x += (this.targetCameraRotation.x - this.camera.rotation.x) * this.cameraRotationSpeed;
         }
         
-        const speed = 20.0; // Adjusted speed for delta time
+        const speed = 60.0; // Adjusted speed for delta time
         const movement = new BABYLON.Vector3(0, 0, 0);
         
         if (this.keys['KeyW']) movement.z += 1;
@@ -1130,7 +1145,7 @@ class TowerDefenseGame {
             });
 
             if (hit && hit.pickedPoint) {
-                const playerHeight = 4.0; // How high the camera is above the ground
+                const playerHeight = 12.0; // How high the camera is above the ground
                 const targetY = hit.pickedPoint.y + playerHeight;
                 // Smoothly interpolate to the target height
                 this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
@@ -1305,7 +1320,7 @@ class TowerDefenseGame {
 
     createExplosionParticles(position) {
         const explosionParticles = new BABYLON.ParticleSystem("explosionParticles", 500, this.scene); // Increased capacity
-        explosionParticles.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+        explosionParticles.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
         explosionParticles.emitter = position.clone().add(new BABYLON.Vector3(0, 1, 0)); // Offset emitter slightly higher
         explosionParticles.minEmitBox = new BABYLON.Vector3(-2, -2, -2); // Larger emit box
         explosionParticles.maxEmitBox = new BABYLON.Vector3(2, 2, 2); // Larger emit box
@@ -1601,7 +1616,7 @@ class TowerDefenseGame {
     
     createEnemyBombParticles(position) {
         const particleSystem = new BABYLON.ParticleSystem("particles", 200, this.scene);
-        particleSystem.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+        particleSystem.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
         particleSystem.emitter = position;
         particleSystem.minEmitBox = new BABYLON.Vector3(-0.5, -0.5, -0.5);
         particleSystem.maxEmitBox = new BABYLON.Vector3(0.5, 0.5, 0.5);
@@ -1669,6 +1684,21 @@ class TowerDefenseGame {
         this.currentMusic.src = this.musicFiles[this.currentMusicIndex];
         this.currentMusic.play().catch(e => console.error("Error playing music:", e));
         console.log(`🎶 Playing: ${this.musicFiles[this.currentMusicIndex]}`);
+    }
+
+    switchWeather() {
+        if (this.weatherSystem) {
+            this.weatherSystem.dispose();
+        }
+
+        this.isEnhancedWeather = !this.isEnhancedWeather;
+
+        if (this.isEnhancedWeather) {
+            this.weatherSystem = new EnhancedWeatherSystem(this.scene, this.engine);
+        } else {
+            this.weatherSystem = new SimpleWeatherSystem(this.scene);
+        }
+        console.log(`Switched to ${this.isEnhancedWeather ? 'Enhanced' : 'Simple'} Weather System.`);
     }
 }
 

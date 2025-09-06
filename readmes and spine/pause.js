@@ -28,6 +28,7 @@ class PauseMenu {
                     <button id="resumeBtn" class="menu-btn">RESUME</button>
                     <button id="restartBtn" class="menu-btn">RESTART</button>
                     <button id="inspectorBtn" class="menu-btn">DEBUG INSPECTOR</button>
+                    <button id="switchWeatherBtn" class="menu-btn">SWITCH WEATHER</button>
                     <button id="exitBtn" class="menu-btn">EXIT</button>
                 </div>
                 <div style="margin-top: 40px; font-size: 1em; color: #ff8c00;">
@@ -76,6 +77,7 @@ class PauseMenu {
                 this.game.scene.debugLayer.show();
             }
         };
+        document.getElementById('switchWeatherBtn').onclick = () => this.game.switchWeather();
     }
 
     show() {

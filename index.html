@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>ORDINARY DEFENSE 2 - Terravivaria </title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="hud.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Share+Tech+Mono:wght@400&display=swap');
@@ -784,6 +785,14 @@
         <video id="introVideo" src="assets/video/intro.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
     </div>
 
+    <div id="loreVideoContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 2000; display: none; justify-content: center; align-items: center;">
+        <video id="loreVideo" src="assets/video/lore1.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+    </div>
+
+    <div id="lore2VideoContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 2000; display: none; justify-content: center; align-items: center;">
+        <video id="lore2Video" src="assets/video/lore2.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+    </div>
+
     <div id="loading">
         <div class="loading-title">ORDINARY DEFENSE 2</div>
         <div class="loading-subtitle">TACTICAL OPERATIONS INITIALIZING...</div>
@@ -959,8 +968,13 @@
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/draco/draco_wasm_wrapper_gltf.js"></script>
+    <script src="https://cdn.babylonjs.com/postprocesses/babylon.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/materials/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/procedural-textures/babylonjs.proceduralTextures.min.js"></script>
     <script src="skybox.js"></script>
     <script src="weather.js"></script>
+    <script src="weather2.js"></script>
     <script src="player.js"></script>
     <script src="enemy.js"></script>
     <script src="readmes and spine/pause.js"></script>
