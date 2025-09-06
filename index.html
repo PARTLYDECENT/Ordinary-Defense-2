@@ -34,116 +34,7 @@
             touch-action: none;
         }
         
-        /* Military Drone Targeting System */
-        #crosshair {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            pointer-events: none;
-            z-index: 1000;
-            filter: drop-shadow(0 0 10px #ff3300);
-        }
         
-        /* Center targeting dot */
-        #crosshair::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 4px;
-            height: 4px;
-            background: #ff3300;
-            border-radius: 50%;
-            box-shadow: 
-                0 0 10px #ff3300, 
-                0 0 20px #ff3300, 
-                0 0 30px #ff6600;
-            animation: targetPulse 1s ease-in-out infinite alternate;
-        }
-        
-        /* Rotating outer ring */
-        #crosshair::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
-            border: 2px solid transparent;
-            border-top: 2px solid #ff3300;
-            border-right: 2px solid #ff6600;
-            border-radius: 50%;
-            animation: droneRotate 2s linear infinite;
-            opacity: 0.8;
-        }
-        
-        /* Combat targeting brackets */
-        .crosshair-bracket {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #ff3300;
-            opacity: 0.9;
-            animation: bracketPulse 2s ease-in-out infinite alternate;
-        }
-        
-        .crosshair-bracket:nth-child(1) {
-            top: -15px;
-            left: -15px;
-            border-right: none;
-            border-bottom: none;
-            animation-delay: 0s;
-        }
-        
-        .crosshair-bracket:nth-child(2) {
-            top: -15px;
-            right: -15px;
-            border-left: none;
-            border-bottom: none;
-            animation-delay: 0.5s;
-        }
-        
-        .crosshair-bracket:nth-child(3) {
-            bottom: -15px;
-            left: -15px;
-            border-right: none;
-            border-top: none;
-            animation-delay: 1s;
-        }
-        
-        .crosshair-bracket:nth-child(4) {
-            bottom: -15px;
-            right: -15px;
-            border-left: none;
-            border-top: none;
-            animation-delay: 1.5s;
-        }
-        
-        /* Range markers */
-        .range-marker {
-            position: absolute;
-            width: 1px;
-            height: 8px;
-            background: #ff6600;
-            top: 50%;
-            left: 50%;
-            transform-origin: center;
-            opacity: 0.6;
-        }
-        
-        .range-marker:nth-child(5) { transform: translate(-50%, -50%) rotate(0deg) translateY(-35px); }
-        .range-marker:nth-child(6) { transform: translate(-50%, -50%) rotate(45deg) translateY(-35px); }
-        .range-marker:nth-child(7) { transform: translate(-50%, -50%) rotate(90deg) translateY(-35px); }
-        .range-marker:nth-child(8) { transform: translate(-50%, -50%) rotate(135deg) translateY(-35px); }
-        .range-marker:nth-child(9) { transform: translate(-50%, -50%) rotate(180deg) translateY(-35px); }
-        .range-marker:nth-child(10) { transform: translate(-50%, -50%) rotate(225deg) translateY(-35px); }
-        .range-marker:nth-child(11) { transform: translate(-50%, -50%) rotate(270deg) translateY(-35px); }
-        .range-marker:nth-child(12) { transform: translate(-50%, -50%) rotate(315deg) translateY(-35px); }
         
         /* Military UI Panel Base */
         .ui-panel {
@@ -555,7 +446,7 @@
         
         @keyframes droneRotate {
             0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
+            100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
         
         @keyframes bracketPulse {
@@ -801,20 +692,7 @@
         </div>
     </div>
     
-    <div id="crosshair">
-        <div class="crosshair-bracket"></div>
-        <div class="crosshair-bracket"></div>
-        <div class="crosshair-bracket"></div>
-        <div class="crosshair-bracket"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-        <div class="range-marker"></div>
-    </div>
+    
     
     <canvas id="renderCanvas"></canvas>
     

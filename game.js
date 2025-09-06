@@ -212,6 +212,10 @@ class TowerDefenseGame {
         // Create scene and other game elements
         await this.createScene();
         this.weatherSystem = new EnhancedWeatherSystem(this.scene, this.engine);
+        // Start raining immediately at game start (guarded)
+        if (this.weatherSystem && typeof this.weatherSystem.startRain === 'function') {
+            try { this.weatherSystem.startRain(); } catch (e) { console.warn('Weather startRain failed:', e); }
+        }
         await this.createTerrain();
         this.spawnLoreEgg(); // Spawn the lore egg
         const sprawlingPlantPosition = new BABYLON.Vector3(-80, 0, 0);
@@ -388,7 +392,13 @@ class TowerDefenseGame {
         }
     
         this.path = points.map(point => {
-            point.y = 0.15; // Slightly above ground
+            const ray = new BABYLON.Ray(new BABYLON.Vector3(point.x, 1000, point.z), new BABYLON.Vector3(0, -1, 0));
+            const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+            if (hit.hit) {
+                point.y = hit.pickedPoint.y + 0.15; // Slightly above ground
+            } else {
+                point.y = 0.15;
+            }
             return point;
         });
     
@@ -563,11 +573,9 @@ class TowerDefenseGame {
             this.isPointerLocked = document.pointerLockElement === this.canvas;
             if (this.isPointerLocked) {
                 document.body.style.cursor = 'none'; // Hide cursor when pointer is locked
-                document.getElementById('crosshair').style.display = 'block'; // Show crosshair
             } else {
                 // When not pointer locked, the body's default cursor (set in CSS) will be used.
                 document.body.style.cursor = ''; // Reset to default (which is now custom_cursor.png from CSS)
-                document.getElementById('crosshair').style.display = 'none'; // Hide crosshair
             }
         });
 
@@ -838,7 +846,6 @@ class TowerDefenseGame {
         const towerMesh = meshes[0];
         console.log(`createTower: towerMesh for ${modelFileName}:`, towerMesh);
         towerMesh.position = position.clone();
-        towerMesh.position.y = 1;
 
         const tower = {
             base: towerMesh,
@@ -878,7 +885,6 @@ class TowerDefenseGame {
         const meshes = await this.loadModel("assets/models/", "farm.glb");
         const farmingUnitMesh = meshes[0];
         farmingUnitMesh.position = position.clone();
-        farmingUnitMesh.position.y = 1.5; // Adjust Y position as needed for the model
         return farmingUnitMesh;
     }
 
@@ -963,7 +969,14 @@ class TowerDefenseGame {
                 const clone = base.clone(`loreEgg_${i}`);
                 if (!clone) continue;
                 // Position choice: use predefined if available otherwise random nearby
-                const pos = positions[i] || new BABYLON.Vector3((Math.random() - 0.5) * 140, 1, (Math.random() - 0.5) * 120);
+                let pos = positions[i] || new BABYLON.Vector3((Math.random() - 0.5) * 140, 1, (Math.random() - 0.5) * 120);
+                
+                const ray = new BABYLON.Ray(new BABYLON.Vector3(pos.x, 1000, pos.z), new BABYLON.Vector3(0, -1, 0));
+                const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+                if (hit.hit) {
+                    pos.y = hit.pickedPoint.y;
+                }
+
                 clone.position = pos.clone();
                 clone.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
                 clone.name = `loreEgg_${i}`;
@@ -1194,7 +1207,6 @@ class TowerDefenseGame {
         const meshes = await this.loadModel("assets/models/", modelFileName);
         const enemyMesh = meshes[0];
         enemyMesh.position = this.path[0].clone();
-        enemyMesh.position.y = 1;
 
         const enemyData = {
             mesh: enemyMesh,
@@ -1366,7 +1378,6 @@ class TowerDefenseGame {
                         this.path[enemy.pathIndex + 1],
                         enemy.pathProgress
                     );
-                    enemy.mesh.position.y = 1;
                     
                     // Face movement direction
                     const direction = this.path[enemy.pathIndex + 1].subtract(this.path[enemy.pathIndex]);
@@ -1763,8 +1774,12 @@ function startNextWave() {
     
     // Start weather effects
     if (game.weatherSystem) {
-        game.weatherSystem.startRain();
-        game.weatherSystem.startLightning();
+        if (typeof game.weatherSystem.startRain === 'function') {
+            try { game.weatherSystem.startRain(); } catch (e) { console.warn('Weather startRain failed:', e); }
+        }
+        if (typeof game.weatherSystem.startLightning === 'function') {
+            try { game.weatherSystem.startLightning(); } catch (e) { console.warn('Weather startLightning failed:', e); }
+        }
     }
 }
 
