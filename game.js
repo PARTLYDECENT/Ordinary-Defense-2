@@ -500,29 +500,123 @@ class TowerDefenseGame {
                         picked = picked.parent;
                     }
 
-                    if (eggIndex !== null && this.loreEggsCollected && this.loreEggsCollected[eggIndex] === false) {
-                        this.loreEggsCollected[eggIndex] = true;
-                        console.log(`🥚 Lore egg ${eggIndex} collected with E key!`);
-                        const pos = hit.pickedMesh.getAbsolutePosition ? hit.pickedMesh.getAbsolutePosition() : (picked ? picked.getAbsolutePosition() : null);
-                        if (pos) this.createEggBurstParticles(pos);
-                        // dispose the egg mesh if it still exists
-                        try {
-                            // use the robust disposer to ensure all child meshes and related resources are removed
-                            if (typeof this.disposeEgg === 'function') {
-                                this.disposeEgg(eggIndex);
-                            } else {
-                                const eggMesh = this.loreEggs && this.loreEggs[eggIndex];
-                                if (eggMesh) {
-                                    try {
-                                        const children = eggMesh.getChildMeshes ? eggMesh.getChildMeshes(true) : [];
-                                        children.forEach(m => { if (m && typeof m.isDisposed === 'function' ? !m.isDisposed() : true) { try { m.dispose(); } catch(e){} } });
-                                        if (typeof eggMesh.isDisposed === 'function' ? !eggMesh.isDisposed() : true) { eggMesh.dispose(); }
-                                    } catch (ee) {}
-                                    this.loreEggs[eggIndex] = null;
+                    // If we didn't get an egg from the raycast, fall back to proximity check
+                    if (eggIndex === null) {
+                        const interactionRange = 6.0; // meters - how close player must be
+                        if (Array.isArray(this.loreEggs) && this.loreEggs.length) {
+                            for (let i = 0; i < this.loreEggs.length; i++) {
+                                const candidate = this.loreEggs[i];
+                                if (!candidate || this.loreEggsCollected[i]) continue;
+                                let pos = null;
+                                try {
+                                    pos = (typeof candidate.getAbsolutePosition === 'function') ? candidate.getAbsolutePosition() : candidate.position;
+                                } catch (e) {
+                                    pos = candidate.position;
                                 }
+                                if (!pos) continue;
+                                const dist = BABYLON.Vector3.Distance(this.camera.position, pos);
+                                if (dist <= interactionRange) { eggIndex = i; break; }
                             }
-                        } catch (e) {}
-                        this.unlockNextLore();
+                        }
+                    }
+
+                    if (eggIndex !== null && Array.isArray(this.loreEggs) && this.loreEggs[eggIndex] && this.loreEggsCollected && this.loreEggsCollected[eggIndex] === false) {
+                        // Mark collected immediately to avoid double-trigger
+                        this.loreEggsCollected[eggIndex] = true;
+
+                        const eggMesh = this.loreEggs[eggIndex];
+                        console.log(`🥚 Lore egg ${eggIndex} collected with E key!`, eggMesh);
+
+                        // Robustly get a world position for particles/animation
+                        let pos = null;
+                        try {
+                            pos = (eggMesh && typeof eggMesh.getAbsolutePosition === 'function') ? eggMesh.getAbsolutePosition() : (eggMesh.position ? eggMesh.position.clone() : null);
+                        } catch (e) {
+                            try { pos = eggMesh.position ? eggMesh.position.clone() : null; } catch (ee) { pos = null; }
+                        }
+
+                        // Fallback: if we hit a mesh with the raycast, use its position
+                        if (!pos && hit && hit.pickedMesh) {
+                            try { pos = (typeof hit.pickedMesh.getAbsolutePosition === 'function') ? hit.pickedMesh.getAbsolutePosition() : hit.pickedMesh.position.clone(); } catch (e) { pos = hit.pickedMesh.position ? hit.pickedMesh.position.clone() : null; }
+                        }
+
+                        // Create visible particle burst at the egg position
+                        if (pos) {
+                            try { this.createEggBurstParticles(pos); } catch (e) { console.warn('Failed to create egg particles:', e); }
+                        }
+
+                        // Immediately disable pickability so it can't be interacted with again
+                        try {
+                            if (typeof eggMesh.setEnabled === 'function') eggMesh.setEnabled(true); // ensure enabled so animation runs
+                            eggMesh.isPickable = false;
+                            eggMesh.metadata = eggMesh.metadata || {};
+                            eggMesh.metadata.collected = true;
+                        } catch (e) { /* ignore */ }
+
+                        // Animate: sink a bit and shrink to near-zero, then cleanup
+                        try {
+                            const animFrames = 30;
+
+                            // Scale animation (vector3)
+                            const scaleAnim = new BABYLON.Animation(
+                                `eggScaleAnim_${eggIndex}`,
+                                "scaling",
+                                30,
+                                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+                            );
+                            const currentScale = eggMesh.scaling ? eggMesh.scaling.clone() : new BABYLON.Vector3(1, 1, 1);
+                            const targetScale = new BABYLON.Vector3(0.01, 0.01, 0.01);
+                            scaleAnim.setKeys([
+                                { frame: 0, value: currentScale },
+                                { frame: animFrames, value: targetScale }
+                            ]);
+
+                            // Position animation to sink down slightly
+                            const posAnim = new BABYLON.Animation(
+                                `eggPosAnim_${eggIndex}`,
+                                "position",
+                                30,
+                                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+                            );
+                            const currentPos = eggMesh.position ? eggMesh.position.clone() : (pos ? pos.clone() : new BABYLON.Vector3(0, 0, 0));
+                            const sinkPos = currentPos.add(new BABYLON.Vector3(0, -2.0, 0)); // sink 2 units
+                            posAnim.setKeys([
+                                { frame: 0, value: currentPos },
+                                { frame: animFrames, value: sinkPos }
+                            ]);
+
+                            eggMesh.animations = eggMesh.animations || [];
+                            eggMesh.animations.push(scaleAnim, posAnim);
+
+                            // Start the animation; when complete, make sure mesh is removed and reference cleared
+                            this.scene.beginAnimation(eggMesh, 0, animFrames, false, 1, () => {
+                                try {
+                                    if (typeof eggMesh.setEnabled === 'function') eggMesh.setEnabled(false);
+                                    eggMesh.isVisible = false;
+                                    eggMesh.isPickable = false;
+
+                                    // Dispose children first to avoid dangling nodes
+                                    try {
+                                        const children = typeof eggMesh.getChildMeshes === 'function' ? eggMesh.getChildMeshes(true) : [];
+                                        children.forEach(c => { try { c.dispose(); } catch (e) { /* ignore */ } });
+                                    } catch (e) { /* ignore */ }
+
+                                    try { eggMesh.dispose(); } catch (e) { /* ignore */ }
+                                } catch (e) { console.warn('Egg cleanup failed:', e); }
+
+                                // Clear references so future proximity checks won't find it
+                                try { this.loreEggs[eggIndex] = null; } catch (e) { /* ignore */ }
+                            });
+                        } catch (e) {
+                            console.warn('Egg animation failed:', e);
+                            // Fallback: immediately hide and dispose
+                            try { if (eggMesh) { eggMesh.isPickable = false; eggMesh.setEnabled && eggMesh.setEnabled(false); eggMesh.dispose && eggMesh.dispose(); this.loreEggs[eggIndex] = null; } } catch (ee) {}
+                        }
+
+                        // Finally, unlock lore and update UI/state
+                        try { this.unlockNextLore(); } catch (e) { console.warn('unlockNextLore failed:', e); }
                     }
                     // Check for tentacle orb
                     else if (hit.pickedMesh.name === 'tentacleOrb_enhanced' || hit.pickedMesh.name === 'tentacleOrb_fallback') {
