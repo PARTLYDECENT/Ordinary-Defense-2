@@ -3,7 +3,7 @@ class EnhancedWeatherSystem {
         this.scene = scene;
         this.rainParticles = null;
         this.light = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0, 1, 0), this.scene);
-        this.light.intensity = 0.7; // Adjust intensity as needed
+        this.light.intensity = 0.07; // Adjust intensity as needed
     }
 
     startRain() {

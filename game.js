@@ -65,6 +65,7 @@ class TowerDefenseGame {
         this.lore5Played = false; // Flag for lore5.mp3 to play once
         this.pauseMenu = null; // New pause menu instance
         this.sfx1Sound = null;
+        this.fartSound = null; // New: Fart sound for vehicle
         this.towerPlacedCount = 0;
         this.loreEggMesh = null; // To store the lore egg mesh
         this.loreEggCollected = false; // To track if the lore egg has been collected
@@ -82,19 +83,18 @@ class TowerDefenseGame {
         this.colonies = []; // New: Array to store colonies
         this.farmingUnits = []; // New: Array to store farming units
         this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
-        this.tentacleOrbs = []; // To store tentacle orb instances
+        this.ufos = []; // New: Array to store UFO instances
         this.path = [];
         this.pathMeshes = [];
         this.ground = null;
         this.player = null;
+        this.drivableVehicle = null;
 
         // Input
         this.keys = {};
+        this.playerControlState = 'camera'; // 'camera' or 'vehicle'
+        this.vehicleSpeed = 0;
+        this.vehicleRotationSpeed = 0;
         this.isPointerLocked = false;
         this.weatherSystem = null;
         this.cameraSensitivity = 0.002; // Reduced sensitivity
@@ -236,9 +236,12 @@ class TowerDefenseGame {
         };
         new PredatoryThornvine(this.scene, predatoryThornvinePosition, predatoryThornvineConfig);
                                                         this.tentacleOrbs = spawnTentacleOrbs(this.scene, 3, 200);
-        this.createEnhancedPath();
+        this.ufos = spawnUFOs(this.scene, this, 3); // Spawn 3 UFOs
+        this.ufoVisibilityInterval = null; // New: To manage UFO visibility timing
+        this.path = [];
         this.createCamera();
-        createSkybox(this.scene); // Create skybox AFTER camera is ready
+        this.createDrivableVehicle();
+        createWarSkybox(this.scene); // Create skybox AFTER camera is ready
         this.setupControls();
         this.setupUI();
         this.startGameLoop();
@@ -254,6 +257,7 @@ class TowerDefenseGame {
         this.lore4Sound = document.getElementById('lore4Sound'); // Initialize lore4Sound
         this.lore5Sound = document.getElementById('lore5Sound'); // Initialize lore5Sound
         this.sfx1Sound = document.getElementById('sfx1Sound');
+        this.fartSound = document.getElementById('fartSound'); // Initialize fartSound
         
         // Initialize pause menu
         this.pauseMenu = new PauseMenu(this); // Pass game instance to pause menu
@@ -426,6 +430,27 @@ class TowerDefenseGame {
         console.log("📷 Camera positioned with reduced scale");
     }
 
+    async createDrivableVehicle() {
+        const meshes = await this.loadModel("assets/models/", "fucked.glb");
+        this.drivableVehicle = meshes[0];
+        this.drivableVehicle.rotation.y = Math.PI;
+    
+        // Set an initial position (e.g., near the center of the map)
+        const initialX = 0;
+        const initialZ = 0;
+
+        // Raycast to position the vehicle on the ground
+        const ray = new BABYLON.Ray(new BABYLON.Vector3(initialX, 1000, initialZ), new BABYLON.Vector3(0, -1, 0));
+        const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+    
+        if (hit.hit) {
+            this.drivableVehicle.position = new BABYLON.Vector3(initialX, hit.pickedPoint.y, initialZ);
+        } else {
+            // Fallback if raycast fails (e.g., ground not loaded yet)
+            this.drivableVehicle.position = new BABYLON.Vector3(initialX, 0, initialZ); // Default to y=0
+        }
+    }
+
     setupControls() {
 
 
@@ -470,6 +495,23 @@ class TowerDefenseGame {
             // Lore egg and Tentacle Orb pickup with 'E' key
             if (e.code === 'KeyE') {
                 if (this.isPaused) return;
+
+                if (this.playerControlState === 'camera') {
+                    console.log("Switching to vehicle state (3rd person).");
+                    this.playerControlState = 'vehicle';
+                    // No longer parent camera to vehicle for 3rd person
+                    this.camera.parent = null; 
+                    // Position camera behind and above the vehicle
+                    this.camera.position = this.drivableVehicle.position.clone().add(new BABYLON.Vector3(0, 10, -20));
+                    this.camera.setTarget(this.drivableVehicle.position);
+                } else if (this.playerControlState === 'vehicle') {
+                    console.log("Exiting vehicle.");
+                    this.playerControlState = 'camera';
+                    this.camera.parent = null;
+                    // Reset camera position to a default view or last known camera position
+                    this.camera.position = new BABYLON.Vector3(0, 9, -17);
+                    this.camera.rotation.x = Math.PI / 6;
+                }
 
                 const ray = new BABYLON.Ray(this.camera.position, this.camera.getForwardRay().direction);
                 const hit = this.scene.pickWithRay(ray);
@@ -1194,7 +1236,33 @@ class TowerDefenseGame {
             this.updateEnemyProjectiles();
             this.spawnEnemies();
             this.checkWaveComplete();
+            this.manageUFOVisibility(); // New: Manage UFO visibility
         });
+    }
+
+    manageUFOVisibility() {
+        const now = Date.now();
+        const visibleUFOs = this.ufos.filter(ufo => ufo.isVisible);
+        const hiddenUFOs = this.ufos.filter(ufo => !ufo.isVisible);
+
+        // Hide UFOs that have been visible for 1 minute (60 seconds)
+        visibleUFOs.forEach(ufo => {
+            if (now - ufo.lastVisibilityToggleTime > 60 * 1000) {
+                ufo.hide();
+            }
+        });
+
+        // Show up to 2 UFOs that have been hidden for at least 1 minute (60 seconds)
+        // and if there are currently less than 2 UFOs visible
+        if (visibleUFOs.length < 2) {
+            const availableToShow = hiddenUFOs.filter(ufo => now - ufo.lastVisibilityToggleTime > 60 * 1000);
+            
+            // Shuffle and pick up to 2
+            availableToShow.sort(() => Math.random() - 0.5);
+            for (let i = 0; i < Math.min(2 - visibleUFOs.length, availableToShow.length); i++) {
+                availableToShow[i].show();
+            }
+        }
     }
 
     updateCamera() {
@@ -1203,69 +1271,115 @@ class TowerDefenseGame {
         const deltaTime = this.engine.getDeltaTime() / 1000.0; // Delta time in seconds
 
         // Smooth camera rotation
-        if (this.targetCameraRotation) {
-            this.camera.rotation.y += (this.targetCameraRotation.y - this.camera.rotation.y) * this.cameraRotationSpeed;
-            this.camera.rotation.x += (this.targetCameraRotation.x - this.camera.rotation.x) * this.cameraRotationSpeed;
-        }
-        
-        const speed = 60.0; // Adjusted speed for delta time
-        const movement = new BABYLON.Vector3(0, 0, 0);
-        
-        if (this.keys['KeyW']) movement.z += 1;
-        if (this.keys['KeyS']) movement.z -= 1;
-        if (this.keys['KeyA']) movement.x -= 1;
-        if (this.keys['KeyD']) movement.x += 1;
-        
-        if (movement.length() > 0) {
-            movement.normalize(); // Ensure consistent speed in all directions
-            const forward = this.camera.getDirection(BABYLON.Vector3.Forward());
-            const right = this.camera.getDirection(BABYLON.Vector3.Right());
-            
-            // Project movement to XZ plane to prevent flying
-            const forwardXZ = forward.clone();
-            forwardXZ.y = 0;
-            forwardXZ.normalize();
-
-            const rightXZ = right.clone();
-            rightXZ.y = 0;
-            rightXZ.normalize();
-
-            const worldMovement = forwardXZ.scale(movement.z).add(rightXZ.scale(movement.x));
-            worldMovement.scaleInPlace(speed * deltaTime);
-            this.camera.position.addInPlace(worldMovement);
-        }
-
-        // Ground collision and sticking
-        if (this.ground) {
-            // Ray starts from high above the camera's XZ position and goes down.
-            const ray = new BABYLON.Ray(new BABYLON.Vector3(this.camera.position.x, 1000, this.camera.position.z), new BABYLON.Vector3(0, -1, 0));
-            
-            const hit = this.scene.pickWithRay(ray, (mesh) => {
-                let current = mesh;
-                while (current) {
-                    if (current === this.ground) {
-                        return true;
-                    }
-                    current = current.parent;
-                }
-                return false;
-            });
-
-            if (hit && hit.pickedPoint) {
-                const playerHeight = 12.0; // How high the camera is above the ground
-                const targetY = hit.pickedPoint.y + playerHeight;
-                // Smoothly interpolate to the target height
-                this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+        if (this.playerControlState === 'camera') {
+            // Smooth camera rotation
+            if (this.targetCameraRotation) {
+                this.camera.rotation.y += (this.targetCameraRotation.y - this.camera.rotation.y) * this.cameraRotationSpeed;
+                this.camera.rotation.x += (this.targetCameraRotation.x - this.camera.rotation.x) * this.cameraRotationSpeed;
             }
-        }
+            
+            const speed = 60.0; // Adjusted speed for delta time
+            const movement = new BABYLON.Vector3(0, 0, 0);
+            
+            if (this.keys['KeyW']) movement.z += 1;
+            if (this.keys['KeyS']) movement.z -= 1;
+            if (this.keys['KeyA']) movement.x -= 1;
+            if (this.keys['KeyD']) movement.x += 1;
+            
+            if (movement.length() > 0) {
+                movement.normalize(); // Ensure consistent speed in all directions
+                const forward = this.camera.getDirection(BABYLON.Vector3.Forward());
+                const right = this.camera.getDirection(BABYLON.Vector3.Right());
+                
+                // Project movement to XZ plane to prevent flying
+                const forwardXZ = forward.clone();
+                forwardXZ.y = 0;
+                forwardXZ.normalize();
 
-        // Hands movement based on walking
-        if (this.handsImage) {
-            const isMoving = (this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD']);
-            const targetTop = isMoving ? -30 : -50; // Move down to -30px when walking, up to -50px when idle
-            const currentTop = parseFloat(this.handsImage.top || -50); // Default to -50 if not set
-            const newTop = currentTop + (targetTop - currentTop) * 0.1; // Smooth interpolation
-            this.handsImage.top = `${newTop}px`;
+                const rightXZ = right.clone();
+                rightXZ.y = 0;
+                rightXZ.normalize();
+
+                const worldMovement = forwardXZ.scale(movement.z).add(rightXZ.scale(movement.x));
+                worldMovement.scaleInPlace(speed * deltaTime);
+                this.camera.position.addInPlace(worldMovement);
+            }
+
+            // Ground collision and sticking
+            if (this.ground) {
+                // Ray starts from high above the camera's XZ position and goes down.
+                const ray = new BABYLON.Ray(new BABYLON.Vector3(this.camera.position.x, 1000, this.camera.position.z), new BABYLON.Vector3(0, -1, 0));
+                
+                const hit = this.scene.pickWithRay(ray, (mesh) => {
+                    let current = mesh;
+                    while (current) {
+                        if (current === this.ground) {
+                            return true;
+                        }
+                        current = current.parent;
+                    }
+                    return false;
+                });
+
+                if (hit && hit.pickedPoint) {
+                    const playerHeight = 12.0; // How high the camera is above the ground
+                    const targetY = hit.pickedPoint.y + playerHeight;
+                    // Smoothly interpolate to the target height
+                    this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+                }
+            }
+
+            // Hands movement based on walking
+            if (this.handsImage) {
+                const isMoving = (this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD']);
+                const targetTop = isMoving ? -30 : -50; // Move down to -30px when walking, up to -50px when idle
+                const currentTop = parseFloat(this.handsImage.top || -50); // Default to -50 if not set
+                const newTop = currentTop + (targetTop - currentTop) * 0.1; // Smooth interpolation
+                this.handsImage.top = `${newTop}px`;
+            }
+        } else if (this.playerControlState === 'vehicle') {
+            // Vehicle controls
+            if (this.keys['KeyW']) this.vehicleSpeed += 0.1;
+            if (this.keys['KeyS']) this.vehicleSpeed -= 0.1;
+            if (this.keys['KeyA']) this.drivableVehicle.rotation.y -= 0.05;
+            if (this.keys['KeyD']) this.drivableVehicle.rotation.y += 0.05;
+
+            this.drivableVehicle.position.x += Math.sin(this.drivableVehicle.rotation.y) * this.vehicleSpeed;
+            this.drivableVehicle.position.z += Math.cos(this.drivableVehicle.rotation.y) * this.vehicleSpeed;
+
+            this.vehicleSpeed *= 0.95; // friction
+
+            // Ground collision for vehicle
+            if (this.ground) {
+                const ray = new BABYLON.Ray(new BABYLON.Vector3(this.drivableVehicle.position.x, 1000, this.drivableVehicle.position.z), new BABYLON.Vector3(0, -1, 0));
+                const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+
+                if (hit.hit) {
+                    this.drivableVehicle.position.y = hit.pickedPoint.y;
+                }
+            }
+
+            // Third-person camera logic
+            const cameraOffset = new BABYLON.Vector3(0, 15, -30); // Offset behind and above the vehicle
+            const rotatedOffset = cameraOffset.rotateByQuaternionToRef(this.drivableVehicle.rotationQuaternion || BABYLON.Quaternion.FromEulerAngles(0, this.drivableVehicle.rotation.y, 0), new BABYLON.Vector3());
+            const targetCameraPosition = this.drivableVehicle.position.add(rotatedOffset);
+
+            // Smoothly interpolate camera position
+            this.camera.position = BABYLON.Vector3.Lerp(this.camera.position, targetCameraPosition, 0.1);
+            this.camera.setTarget(this.drivableVehicle.position.add(new BABYLON.Vector3(0, 5, 0))); // Look slightly above the vehicle
+
+            // Play fart sound when moving, pause when stopped
+            const movementThreshold = 0.01; // Small threshold to detect movement
+            if (Math.abs(this.vehicleSpeed) > movementThreshold) {
+                if (this.fartSound && this.fartSound.paused) {
+                    this.fartSound.loop = true; // Loop the sound while moving
+                    this.fartSound.play().catch(e => console.error("Error playing fart sound:", e));
+                }
+            } else {
+                if (this.fartSound && !this.fartSound.paused) {
+                    this.fartSound.pause();
+                }
+            }
         }
     }
 
