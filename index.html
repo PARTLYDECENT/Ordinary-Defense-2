@@ -315,15 +315,6 @@
             margin-bottom: 10px; /* Reduced margin */
         }
         
-        .wave-number {
-            font-family: 'Share Tech Mono', monospace;
-            font-weight: 400;
-            font-size: 24px; /* Significantly smaller */
-            color: #ff3300;
-            text-shadow: 0 0 10px #ff3300; /* Adjusted shadow */
-            animation: waveFlicker 3s ease-in-out infinite;
-        }
-        
         .wave-label {
             font-size: 8px; /* Significantly smaller */
             text-transform: uppercase;
@@ -347,7 +338,7 @@
             font-size: 18px; /* Significantly smaller */
             font-weight: 400;
             color: #ff3300;
-            text-shadow: 0 0 7px #ff3300; /* Adjusted shadow */
+            text-shadow: 0 0 7px #ff3300;
         }
         
         #nextWaveBtn {
@@ -657,13 +648,60 @@
             background-size: 200% auto, 4px 4px, 4px 4px;
             animation: text-shader-animation 3s linear infinite;
         }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 160px;
+            background-color: rgba(15,8,4,0.95);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position the tooltip above the text */
+            left: 50%;
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid #ff6600;
+            font-size: 0.8rem;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #ff6600 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
-        <div id="mainMenu" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/images/bg2.jpg'); background-size: cover; background-position: center; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: broken-flicker 5s infinite linear;">
+        <div id="mainMenu" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/images/bg2.jpg'); background-size: cover; background-position: center; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: broken-flicker 5s infinite linear; gap: 20px;">
         <h1 class="advanced-title-shader">ORDINARY DEFENSE 2</h1>
-        <button id="startGameBtn" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; margin-top: 20px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3);">Start Game</button>
-        <a id="patreonBtn" href="https://www.patreon.com/c/DamionRichter" target="_blank" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; margin-top: 20px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3); text-decoration: none;">Patreon</a>
+        <div class="tooltip">
+                        <button id="startGameBtn" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3);">Start Game</button>
+            <span class="tooltiptext">Begin your defense against the alien invasion.</span>
+        </div>
+        <div class="tooltip">
+            <a id="patreonBtn" href="https://www.patreon.com/c/DamionRichter" target="_blank" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3); text-decoration: none;">Patreon</a>
+            <span class="tooltiptext">Support the development of Ordinary Defense 2 on Patreon.</span>
+        </div>
         <div id="rollingHeader" style="position: absolute; bottom: 20px; width: 100%; overflow: hidden; white-space: nowrap; color: #ff6600; font-family: 'Share Tech Mono', monospace; font-size: 1.5rem; text-shadow: 0 0 10px #ff3300;">
             <span style="display: inline-block; padding-left: 100%; animation: roll 15s linear infinite;">Ordinary Defense 2 Powered by babylon.js</span>
         </div>
@@ -682,6 +720,11 @@
 
     <div id="lore2VideoContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 2000; display: none; justify-content: center; align-items: center;">
         <video id="lore2Video" src="assets/video/lore2.mp4" playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+    </div>
+
+    <div id="datalogContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 2000; display: none;">
+        <button id="datalogCloseBtn">X</button>
+        <iframe id="datalogIframe" src="" frameborder="0" style="width: 100%; height: 100%;"></iframe>
     </div>
 
     <div id="loading">
@@ -725,101 +768,107 @@
                 <div class="stat-value">100%</div>
             </div>
         </div>
-        <div id="objectives-container"></div>
+        <div id="objectives-container"><div id="objectiveInfo" class="objective-text"></div></div>
     </div>
 
     <div id="controls" class="ui-panel" style="display: none;">
         <div class="controls-section">
             <div class="collapsible-header" id="weaponSystemsHeader">
                 <h2 class="section-title">WEAPON SYSTEMS</h2>
-                <button class="collapsible-toggle" id="toggleWeaponSystems">▲</button>
+                <div class="tooltip">
+                    <button class="collapsible-toggle" id="toggleWeaponSystems">▲</button>
+                    <span class="tooltiptext">Toggle Weapon Systems menu.</span>
+                </div>
             </div>
             <div class="collapsible-content scrollable-content" id="weaponSystemsContent">
                 <div class="tower-grid">
-                    <button class="tower-btn" onclick="selectTowerType('basic')" id="basicBtn">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="tower-icon">🔫</span>
-                            <span>M4 TURRET</span>
-                        </div>
-                        <span class="tower-price">$50</span>
-                    </button>
-                    <button class="tower-btn" onclick="selectTowerType('missile')" id="missileBtn">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="tower-icon">🚀</span>
-                            <span>RPG LAUNCHER</span>
-                        </div>
-                        <span class="tower-price">$100</span>
-                    </button>
-                    <button class="tower-btn" onclick="selectTowerType('laser')" id="laserBtn">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="tower-icon">⚡</span>
-                            <span>RAIL GUN</span>
-                        </div>
-                        <span class="tower-price">$150</span>
-                    </button>
-                    <button class="tower-btn" onclick="selectTowerType('colony')" id="colonyBtn">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="tower-icon">🏡</span>
-                            <span>COLONY</span>
-                        </div>
-                        <span class="tower-price">$200</span>
+                    <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('basic')" id="basicBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">🔫</span>
+                                <span>M4 TURRET</span>
+                            </div>
+                            <span class="tower-price">$50</span>
                         </button>
-                    <button class="tower-btn" onclick="selectTowerType('playerAttack')" id="playerAttackBtn">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="tower-icon">🛸</span>
-                            <span>PLAYER ATTACK</span>
-                        </div>
-                        <span class="tower-price">$1000</span>
-                    </button>
+                    </div>
+                    <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('missile')" id="missileBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">🚀</span>
+                                <span>RPG LAUNCHER</span>
+                            </div>
+                            <span class="tower-price">$100</span>
+                        </button>
+                    </div>
+                    <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('laser')" id="laserBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">⚡</span>
+                                <span>RAIL GUN</span>
+                            </div>
+                            <span class="tower-price">$150</span>
+                        </button>
+                    </div>
+                    <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('colony')" id="colonyBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">🏡</span>
+                                <span>COLONY</span>
+                            </div>
+                            <span class="tower-price">$200</span>
+                        </button>
+                    </div>
+                    <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('playerAttack')" id="playerAttackBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">🛸</span>
+                                <span>PLAYER ATTACK</span>
+                            </div>
+                            <span class="tower-price">$1000</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+        
+        <div id="assetDescriptionPanel" class="ui-panel" style="display: none; margin-top: 20px; padding: 15px;">
+            <h3 id="assetDescriptionTitle" class="section-title" style="text-align: left; margin-bottom: 10px;"></h3>
+            <p id="assetDescriptionText" style="font-size: 0.9em; color: #b0b0b0;"></p>
         </div>
         
         <div class="controls-section">
             <div class="collapsible-header" id="engineeringHeader">
                 <h2 class="section-title">ENGINEERING</h2>
-                <button class="collapsible-toggle" id="toggleEngineering">▲</button>
+                <div class="tooltip">
+                    <button class="collapsible-toggle" id="toggleEngineering">▲</button>
+                    <span class="tooltiptext">Toggle Engineering menu.</span>
+                </div>
             </div>
             <div class="collapsible-content scrollable-content" id="engineeringContent">
                 <div class="engineering-unit">
                     <h3 class="unit-title">RESEARCH STATION</h3>
                     <p class="unit-description">Unlock new technologies and upgrades.</p>
-                    <button class="buy-btn" onclick="buyResearchStation()">BUY</button>
+                    <div class="tooltip">
+                        <button class="buy-btn" onclick="buyResearchStation()">BUY</button>
+                    </div>
                 </div>
                 <div class="engineering-unit">
                     <h3 class="unit-title">FARMING UNIT</h3>
                     <p class="unit-description">Generate resources over time.</p>
-                    <button class="buy-btn" onclick="buyFarmingUnit()">BUY</button>
+                    <div class="tooltip">
+                        <button class="buy-btn" onclick="buyFarmingUnit()">BUY</button>
+                    </div>
                 </div>
             </div>
         </div>
 
+        
+
         <div class="controls-section">
-            <h2 class="section-title">CONTROLS</h2>
+            <h2 class="section-title">DATALOG</h2>
             <div class="controls-help">
                 <div class="control-row">
-                    <span class="control-key">WASD</span>
-                    <span class="control-desc">Move Camera</span>
-                </div>
-                <div class="control-row">
-                    <span class="control-key">SPACE / SHIFT</span>
-                    <span class="control-desc">Move Up / Down</span>
-                </div>
-                <div class="control-row">
-                    <span class="control-key">MOUSE</span>
-                    <span class="control-desc">Look Around</span>
-                </div>
-                <div class="control-row">
-                    <span class="control-key">CLICK</span>
-                    <span class="control-desc">Deploy Weapon</span>
-                </div>
-                <div class="control-row">
-                    <span class="control-key">P</span>
-                    <span class="control-desc">Pause Game</span>
-                </div>
-                <div class="control-row">
-                    <span class="control-key">ESC</span>
-                    <span class="control-desc">Release Cursor</span>
+                    <button id="openDatalogBtn" class="buy-btn" style="width: 100%;">OPEN DATALOG</button>
                 </div>
             </div>
         </div>
@@ -836,9 +885,16 @@
             <div class="enemy-count" id="enemiesLeft">0</div>
         </div>
         
-        <button onclick="startNextWave()" id="nextWaveBtn">
-            ENGAGE HOSTILES
-        </button>
+        <div class="tooltip">
+            <button onclick="startNextWave()" id="nextWaveBtn">
+                ENGAGE HOSTILES
+            </button>
+            <span class="tooltiptext">Initiate the next wave of enemies.</span>
+        </div>
+    </div>
+
+    <div id="temporaryMessagePanel" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0, 0, 0, 0.8); color: #fff; padding: 15px 25px; border-radius: 8px; border: 2px solid #ff6600; font-size: 1.2em; text-align: center; z-index: 1000; display: none; box-shadow: 0 0 20px rgba(255, 102, 0, 0.5); max-width: 80%;">
+        <p id="temporaryMessageText"></p>
     </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -876,5 +932,6 @@
         <audio id="enemyShotSound" src="assets/music/enemyshot1.mp3" preload="auto"></audio>
     <audio id="sfx1Sound" src="assets/music/sfx1.wav" preload="auto"></audio>
     <audio id="fartSound" src="assets/music/fart.mp3" preload="auto"></audio>
+    <audio id="eggSound" src="assets/music/egg1.mp3" preload="auto"></audio>
 </body>
 </html>

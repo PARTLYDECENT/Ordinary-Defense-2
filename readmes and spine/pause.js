@@ -29,6 +29,7 @@ class PauseMenu {
                     <button id="restartBtn" class="menu-btn">RESTART</button>
                     <button id="inspectorBtn" class="menu-btn">DEBUG INSPECTOR</button>
                     <button id="switchWeatherBtn" class="menu-btn">SWITCH WEATHER</button>
+                    <button id="datalogMenuBtn" class="menu-btn">DATALOG</button>
                     <button id="exitBtn" class="menu-btn">EXIT</button>
                 </div>
                 <div style="margin-top: 40px; font-size: 1em; color: #ff8c00;">
@@ -78,6 +79,13 @@ class PauseMenu {
             }
         };
         document.getElementById('switchWeatherBtn').onclick = () => this.game.switchWeather();
+        document.getElementById('datalogMenuBtn').onclick = () => {
+            if (this.game.datalogContainer && this.game.datalogIframe) {
+                this.game.datalogIframe.src = 'datalogs/datalog.html';
+                this.game.datalogContainer.style.display = 'flex';
+                this.hide(); // Hide the pause menu
+            }
+        };
     }
 
     show() {

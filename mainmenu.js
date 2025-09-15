@@ -15,6 +15,7 @@ window.addEventListener('DOMContentLoaded', () => {
             mainMenu.style.display = 'none';
             document.body.classList.remove('custom-main-menu-cursor'); // Remove custom cursor class
             videoContainer.style.display = 'flex';
+            introVideo.muted = true; // Mute video to allow autoplay
             introVideo.play().catch(e => {
                 console.error("Error playing intro video:", e);
                 if (window.game) {

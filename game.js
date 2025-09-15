@@ -26,6 +26,23 @@ class TowerDefenseGame {
         this.isPaused = false;
         this.lastPauseToggle = 0;
         
+        this.assetDescriptions = {
+            'basic': { title: 'M4 TURRET', description: 'A standard automatic turret, effective against light armored units. Good all-around defense.' },
+            'missile': { title: 'RPG LAUNCHER', description: 'Launches powerful rockets that deal area-of-effect damage. Ideal for groups of enemies or heavily armored targets.' },
+            'laser': { title: 'RAIL GUN', description: 'Fires high-energy laser beams with pinpoint accuracy and piercing power. Excellent against fast, single targets.' },
+            'colony': { title: 'COLONY', description: 'Establishes a new settlement, expanding your territory and providing a new target for enemies. Essential for strategic defense.' },
+            'playerAttack': { title: 'PLAYER ATTACK', description: 'Calls in a powerful player-controlled attack drone that clears all enemies on the map. Use wisely!' },
+            'researchStation': { title: 'RESEARCH STATION', description: 'Unlocks new technologies and upgrades for your towers and units. Invest in research to gain a strategic advantage.' },
+            'farmingUnit': { title: 'FARMING UNIT', description: 'Generates a steady income of gold over time. Essential for sustaining your defense and expanding your economy.' },
+            'enemy.glb': { title: 'STANDARD ENEMY', description: 'A common ground unit. Weak armor, but can overwhelm in numbers.' },
+            'enemy2.glb': { title: 'HEAVY ENEMY', description: 'A more resilient ground unit with thicker armor. Requires sustained fire.' },
+            'player.glb': { title: 'PLAYER UNIT', description: 'Your primary combat unit. Agile and equipped with versatile weaponry.' },
+            'egg.glb': { title: 'ALIEN EGG', description: 'A fragile alien egg. Destroy it to prevent enemy spawns.' },
+            'tentacle_ship.glb': { title: 'LORE CUBE', description: 'An ancient alien artifact containing valuable lore data. Interact to uncover secrets.' },
+            '1.wav': { title: 'MUSIC TRACK 1', description: 'An atmospheric background track.' },
+            '11.wav': { title: 'MUSIC TRACK 11', description: 'Another atmospheric background track.' },
+        };
+        
         // Video elements
         this.introVideo = null;
         this.videoContainer = null;
@@ -66,9 +83,11 @@ class TowerDefenseGame {
         this.pauseMenu = null; // New pause menu instance
         this.sfx1Sound = null;
         this.fartSound = null; // New: Fart sound for vehicle
+        this.eggSound = null; // New: Egg sound
         this.towerPlacedCount = 0;
         this.loreEggMesh = null; // To store the lore egg mesh
         this.loreEggCollected = false; // To track if the lore egg has been collected
+        this.loreCubeMesh = null; // To store the lore cube mesh
         // lore content state
         this.loreContent = this.loreContent || [];
         this.unlockedLore = this.unlockedLore || [];
@@ -89,6 +108,8 @@ class TowerDefenseGame {
         this.ground = null;
         this.player = null;
         this.drivableVehicle = null;
+        this.collectibleEgg = null;
+        this.allEggsDestroyed = false;
 
         // Input
         this.keys = {};
@@ -189,6 +210,8 @@ class TowerDefenseGame {
             this.loreVideoContainer = document.getElementById('loreVideoContainer');
             this.lore2Video = document.getElementById('lore2Video');
             this.lore2VideoContainer = document.getElementById('lore2VideoContainer');
+            this.datalogContainer = document.getElementById('datalogContainer');
+            this.datalogIframe = document.getElementById('datalogIframe');
 
             // Hide loading screen immediately
             document.getElementById('loading').style.display = 'none';
@@ -217,7 +240,7 @@ class TowerDefenseGame {
             try { this.weatherSystem.startRain(); } catch (e) { console.warn('Weather startRain failed:', e); }
         }
         await this.createTerrain();
-        this.spawnLoreEgg(); // Spawn the lore egg
+        this.createEntryPointMarkers(); // Add visual markers for spawn points
         const sprawlingPlantPosition = new BABYLON.Vector3(-80, 0, 0);
         const sprawlingPlantConfig = {
             growthRate: (0.02 + Math.random() * 0.03) / 10,
@@ -241,6 +264,7 @@ class TowerDefenseGame {
         this.path = [];
         this.createCamera();
         this.createDrivableVehicle();
+        this.spawnLoreCube(); // Spawn the lore cube
         createWarSkybox(this.scene); // Create skybox AFTER camera is ready
         this.setupControls();
         this.setupUI();
@@ -251,13 +275,17 @@ class TowerDefenseGame {
         this.shotMissileSound = document.getElementById('shotMissileSound');
         this.shotLaserSound = document.getElementById('shotLaserSound');
         this.enemyShotSound = document.getElementById('enemyShotSound');
-        this.loreSound = document.getElementById('loreSound');
+                        if (this.loreSound) {
+                    this.loreSound.pause();
+                    this.loreSound.currentTime = 0;
+                }
         this.lore2Sound = document.getElementById('lore2Sound'); // Initialize lore2Sound
         this.lore3Sound = document.getElementById('lore3Sound'); // Initialize lore3Sound
         this.lore4Sound = document.getElementById('lore4Sound'); // Initialize lore4Sound
         this.lore5Sound = document.getElementById('lore5Sound'); // Initialize lore5Sound
         this.sfx1Sound = document.getElementById('sfx1Sound');
         this.fartSound = document.getElementById('fartSound'); // Initialize fartSound
+        this.eggSound = document.getElementById('eggSound'); // Initialize eggSound
         
         // Initialize pause menu
         this.pauseMenu = new PauseMenu(this); // Pass game instance to pause menu
@@ -266,6 +294,8 @@ class TowerDefenseGame {
         document.getElementById('ui').style.display = 'block';
         document.getElementById('controls').style.display = 'block';
         document.getElementById('waveInfo').style.display = 'block';
+        
+        this.setupDatalogControls(); // New: Setup datalog controls
         
         // Create and add hands.png overlay
         const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
@@ -383,6 +413,45 @@ class TowerDefenseGame {
         }
     }
 
+    createEntryPointMarkers() {
+        console.log("Creating entry point markers...");
+        const markerMaterial = new BABYLON.StandardMaterial("markerMat", this.scene);
+        markerMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0); // Red
+        markerMaterial.emissiveColor = new BABYLON.Color3(1, 0.2, 0.2); // Glowing red
+        markerMaterial.alpha = 0.5; // Semi-transparent
+
+        this.entryPoints.forEach((point, index) => {
+            const marker = BABYLON.MeshBuilder.CreateBox(`entryMarker_${index}`, {size: 3}, this.scene);
+            marker.material = markerMaterial;
+            
+            // Raycast to position the marker on the ground
+            const ray = new BABYLON.Ray(new BABYLON.Vector3(point.x, 1000, point.z), new BABYLON.Vector3(0, -1, 0));
+            const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+
+            if (hit.hit) {
+                marker.position = new BABYLON.Vector3(point.x, hit.pickedPoint.y + 1.5, point.z);
+            } else {
+                marker.position = new BABYLON.Vector3(point.x, 1.5, point.z); // Fallback
+            }
+
+            // Add a rotation animation
+            const rotationAnimation = new BABYLON.Animation(
+                "markerRotation",
+                "rotation.y",
+                30,
+                BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+                BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+            );
+            const keys = [];
+            keys.push({ frame: 0, value: 0 });
+            keys.push({ frame: 90, value: 2 * Math.PI });
+            rotationAnimation.setKeys(keys);
+            marker.animations.push(rotationAnimation);
+            this.scene.beginAnimation(marker, 0, 90, true);
+        });
+        console.log(`✅ ${this.entryPoints.length} entry point markers created.`);
+    }
+
     createEnhancedPath(startPoint, endPoint) {
         if (!startPoint || !endPoint) {
             this.path = [];
@@ -452,29 +521,6 @@ class TowerDefenseGame {
     }
 
     setupControls() {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
         // Keyboard controls with pause functionality
         window.addEventListener('keydown', (e) => { 
             this.keys[e.code] = true;
@@ -492,183 +538,62 @@ class TowerDefenseGame {
                 document.exitPointerLock();
             }
 
-            // Lore egg and Tentacle Orb pickup with 'E' key
-            if (e.code === 'KeyE') {
+            // Egg destruction with 'T' key
+            if (e.code === 'KeyT') {
                 if (this.isPaused) return;
+                console.log("'T' key pressed for egg destruction.");
+                console.log(`Camera position: ${this.camera.position}`);
 
-                if (this.playerControlState === 'camera') {
-                    console.log("Switching to vehicle state (3rd person).");
-                    this.playerControlState = 'vehicle';
-                    // No longer parent camera to vehicle for 3rd person
-                    this.camera.parent = null; 
-                    // Position camera behind and above the vehicle
-                    this.camera.position = this.drivableVehicle.position.clone().add(new BABYLON.Vector3(0, 10, -20));
-                    this.camera.setTarget(this.drivableVehicle.position);
-                } else if (this.playerControlState === 'vehicle') {
-                    console.log("Exiting vehicle.");
-                    this.playerControlState = 'camera';
-                    this.camera.parent = null;
-                    // Reset camera position to a default view or last known camera position
-                    this.camera.position = new BABYLON.Vector3(0, 9, -17);
-                    this.camera.rotation.x = Math.PI / 6;
+                const interactionRange = 15.0; // Increased interaction range
+                if (!this.destructibleEggs || this.destructibleEggs.length === 0) {
+                    console.log("No destructible eggs found.");
+                    return;
                 }
 
-                const ray = new BABYLON.Ray(this.camera.position, this.camera.getForwardRay().direction);
-                const hit = this.scene.pickWithRay(ray);
-
-                if (hit.hit && hit.pickedMesh) {
-                    // Robustly find an ancestor mesh that marks the lore egg
-                    let picked = hit.pickedMesh;
-                    let eggIndex = null;
-
-                    while (picked) {
-                        if (picked.metadata && picked.metadata.isLoreEgg === true && typeof picked.metadata.index === 'number') {
-                            eggIndex = picked.metadata.index;
-                            break;
-                        }
-                        // Also support child meshes storing parent index
-                        if (picked.metadata && typeof picked.metadata.parentEggIndex === 'number') {
-                            eggIndex = picked.metadata.parentEggIndex;
-                            break;
-                        }
-
-                        // If name follows pattern loreEgg_#, try parse
-                        if (typeof picked.name === 'string' && picked.name.startsWith('loreEgg_')) {
-                            const parts = picked.name.split('_');
-                            const maybe = parseInt(parts[1], 10);
-                            if (!Number.isNaN(maybe)) { eggIndex = maybe; break; }
-                        }
-
-                        picked = picked.parent;
+                console.log(`Found ${this.destructibleEggs.length} eggs to check.`);
+                for (let i = this.destructibleEggs.length - 1; i >= 0; i--) {
+                    const egg = this.destructibleEggs[i];
+                    if (!egg) {
+                        console.log(`Egg at index ${i} is null or undefined.`);
+                        continue;
                     }
 
-                    // If we didn't get an egg from the raycast, fall back to proximity check
-                    if (eggIndex === null) {
-                        const interactionRange = 6.0; // meters - how close player must be
-                        if (Array.isArray(this.loreEggs) && this.loreEggs.length) {
-                            for (let i = 0; i < this.loreEggs.length; i++) {
-                                const candidate = this.loreEggs[i];
-                                if (!candidate || this.loreEggsCollected[i]) continue;
-                                let pos = null;
-                                try {
-                                    pos = (typeof candidate.getAbsolutePosition === 'function') ? candidate.getAbsolutePosition() : candidate.position;
-                                } catch (e) {
-                                    pos = candidate.position;
-                                }
-                                if (!pos) continue;
-                                const dist = BABYLON.Vector3.Distance(this.camera.position, pos);
-                                if (dist <= interactionRange) { eggIndex = i; break; }
-                            }
-                        }
+                    egg.computeWorldMatrix(true); // Force update of world matrix
+                    const eggCenter = egg.getBoundingInfo().boundingBox.centerWorld;
+                    const dist = BABYLON.Vector3.Distance(this.camera.position, eggCenter);
+                    console.log(`Distance to egg ${i}: ${dist}`);
+                    console.log(`Egg absolute position: ${egg.getAbsolutePosition()}`);
+                    console.log(`Egg bounding box center: ${eggCenter}`);
+
+                    if (dist <= interactionRange) {
+                        console.log(`🥚 Egg ${i} destroyed with T key!`);
+                        this.createEggBurstParticles(egg.getAbsolutePosition());
+                        egg.dispose();
+                        this.destructibleEggs.splice(i, 1);
+                        break; // Only destroy one egg per key press
                     }
+                }
+            }
 
-                    if (eggIndex !== null && Array.isArray(this.loreEggs) && this.loreEggs[eggIndex] && this.loreEggsCollected && this.loreEggsCollected[eggIndex] === false) {
-                        // Mark collected immediately to avoid double-trigger
-                        this.loreEggsCollected[eggIndex] = true;
+            // Lore Cube interaction with 'Y' key
+            if (e.code === 'KeyY') {
+                if (this.isPaused) return;
+                console.log("'Y' key pressed for lore cube interaction.");
 
-                        const eggMesh = this.loreEggs[eggIndex];
-                        console.log(`🥚 Lore egg ${eggIndex} collected with E key!`, eggMesh);
+                const interactionRange = 15.0; // Increased interaction range
+                if (!this.loreCubeMesh) {
+                    console.log("No lore cube found.");
+                    return;
+                }
 
-                        // Robustly get a world position for particles/animation
-                        let pos = null;
-                        try {
-                            pos = (eggMesh && typeof eggMesh.getAbsolutePosition === 'function') ? eggMesh.getAbsolutePosition() : (eggMesh.position ? eggMesh.position.clone() : null);
-                        } catch (e) {
-                            try { pos = eggMesh.position ? eggMesh.position.clone() : null; } catch (ee) { pos = null; }
-                        }
+                this.loreCubeMesh.computeWorldMatrix(true); // Force update of world matrix
+                const cubeCenter = this.loreCubeMesh.getBoundingInfo().boundingBox.centerWorld;
+                const dist = BABYLON.Vector3.Distance(this.camera.position, cubeCenter);
+                console.log(`Distance to lore cube: ${dist}`);
 
-                        // Fallback: if we hit a mesh with the raycast, use its position
-                        if (!pos && hit && hit.pickedMesh) {
-                            try { pos = (typeof hit.pickedMesh.getAbsolutePosition === 'function') ? hit.pickedMesh.getAbsolutePosition() : hit.pickedMesh.position.clone(); } catch (e) { pos = hit.pickedMesh.position ? hit.pickedMesh.position.clone() : null; }
-                        }
-
-                        // Create visible particle burst at the egg position
-                        if (pos) {
-                            try { this.createEggBurstParticles(pos); } catch (e) { console.warn('Failed to create egg particles:', e); }
-                        }
-
-                        // Immediately disable pickability so it can't be interacted with again
-                        try {
-                            if (typeof eggMesh.setEnabled === 'function') eggMesh.setEnabled(true); // ensure enabled so animation runs
-                            eggMesh.isPickable = false;
-                            eggMesh.metadata = eggMesh.metadata || {};
-                            eggMesh.metadata.collected = true;
-                        } catch (e) { /* ignore */ }
-
-                        // Animate: sink a bit and shrink to near-zero, then cleanup
-                        try {
-                            const animFrames = 30;
-
-                            // Scale animation (vector3)
-                            const scaleAnim = new BABYLON.Animation(
-                                `eggScaleAnim_${eggIndex}`,
-                                "scaling",
-                                30,
-                                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-                                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-                            );
-                            const currentScale = eggMesh.scaling ? eggMesh.scaling.clone() : new BABYLON.Vector3(1, 1, 1);
-                            const targetScale = new BABYLON.Vector3(0.01, 0.01, 0.01);
-                            scaleAnim.setKeys([
-                                { frame: 0, value: currentScale },
-                                { frame: animFrames, value: targetScale }
-                            ]);
-
-                            // Position animation to sink down slightly
-                            const posAnim = new BABYLON.Animation(
-                                `eggPosAnim_${eggIndex}`,
-                                "position",
-                                30,
-                                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-                                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-                            );
-                            const currentPos = eggMesh.position ? eggMesh.position.clone() : (pos ? pos.clone() : new BABYLON.Vector3(0, 0, 0));
-                            const sinkPos = currentPos.add(new BABYLON.Vector3(0, -2.0, 0)); // sink 2 units
-                            posAnim.setKeys([
-                                { frame: 0, value: currentPos },
-                                { frame: animFrames, value: sinkPos }
-                            ]);
-
-                            eggMesh.animations = eggMesh.animations || [];
-                            eggMesh.animations.push(scaleAnim, posAnim);
-
-                            // Start the animation; when complete, make sure mesh is removed and reference cleared
-                            this.scene.beginAnimation(eggMesh, 0, animFrames, false, 1, () => {
-                                try {
-                                    if (typeof eggMesh.setEnabled === 'function') eggMesh.setEnabled(false);
-                                    eggMesh.isVisible = false;
-                                    eggMesh.isPickable = false;
-
-                                    // Dispose children first to avoid dangling nodes
-                                    try {
-                                        const children = typeof eggMesh.getChildMeshes === 'function' ? eggMesh.getChildMeshes(true) : [];
-                                        children.forEach(c => { try { c.dispose(); } catch (e) { /* ignore */ } });
-                                    } catch (e) { /* ignore */ }
-
-                                    try { eggMesh.dispose(); } catch (e) { /* ignore */ }
-                                } catch (e) { console.warn('Egg cleanup failed:', e); }
-
-                                // Clear references so future proximity checks won't find it
-                                try { this.loreEggs[eggIndex] = null; } catch (e) { /* ignore */ }
-                            });
-                        } catch (e) {
-                            console.warn('Egg animation failed:', e);
-                            // Fallback: immediately hide and dispose
-                            try { if (eggMesh) { eggMesh.isPickable = false; eggMesh.setEnabled && eggMesh.setEnabled(false); eggMesh.dispose && eggMesh.dispose(); this.loreEggs[eggIndex] = null; } } catch (ee) {}
-                        }
-
-                        // Finally, unlock lore and update UI/state
-                        try { this.unlockNextLore(); } catch (e) { console.warn('unlockNextLore failed:', e); }
-                    }
-                    // Check for tentacle orb
-                    else if (hit.pickedMesh.name === 'tentacleOrb_enhanced' || hit.pickedMesh.name === 'tentacleOrb_fallback') {
-                        const orbInstance = this.tentacleOrbs.find(orb => orb.orb === hit.pickedMesh);
-                        if (orbInstance) {
-                            console.log("💥 Destroying tentacle orb!");
-                            orbInstance.dispose();
-                            this.tentacleOrbs = this.tentacleOrbs.filter(orb => orb !== orbInstance);
-                        }
-                    }
+                if (dist <= interactionRange) {
+                    console.log(`✨ Lore Cube activated with Y key!`);
+                    this.activateLoreCube();
                 }
             }
         });
@@ -679,24 +604,6 @@ class TowerDefenseGame {
         this.canvas.addEventListener('click', () => {
             if (this.isPaused) return;
             
-            // Trigger hands flicker animation on click
-            if (this.handsImage) {
-                const clickFlickerAnimation = new BABYLON.Animation(
-                    "handsClickFlickerAnimation",
-                    "alpha",
-                    30, // frames per second
-                    BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-                    BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT // Play once
-                );
-                const flickerKeys = [];
-                flickerKeys.push({ frame: 0, value: this.handsImage.alpha }); // Start from current alpha
-                flickerKeys.push({ frame: 5, value: 0.2 }); // Briefly go very transparent
-                flickerKeys.push({ frame: 10, value: this.handsImage.alpha }); // Return to original alpha
-                clickFlickerAnimation.setKeys(flickerKeys);
-
-                this.scene.beginDirectAnimation(this.handsImage, [clickFlickerAnimation], 0, 10, false); // Play once
-            }
-
             if (!this.isPointerLocked) {
                 this.canvas.requestPointerLock();
             } else {
@@ -708,10 +615,9 @@ class TowerDefenseGame {
         document.addEventListener('pointerlockchange', () => {
             this.isPointerLocked = document.pointerLockElement === this.canvas;
             if (this.isPointerLocked) {
-                document.body.style.cursor = 'none'; // Hide cursor when pointer is locked
+                document.body.style.cursor = 'none';
             } else {
-                // When not pointer locked, the body's default cursor (set in CSS) will be used.
-                document.body.style.cursor = ''; // Reset to default (which is now custom_cursor.png from CSS)
+                document.body.style.cursor = '';
             }
         });
 
@@ -719,7 +625,7 @@ class TowerDefenseGame {
         document.addEventListener('mousemove', (e) => {
             if (this.isPointerLocked && !this.isPaused) {
                 this.targetCameraRotation.y += e.movementX * this.cameraSensitivity;
-                this.targetCameraRotation.x += e.movementY * this.cameraSensitivity; // Corrected inversion
+                this.targetCameraRotation.x += e.movementY * this.cameraSensitivity;
                 this.targetCameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetCameraRotation.x));
             }
         });
@@ -809,6 +715,20 @@ class TowerDefenseGame {
         const selectedBtn = document.getElementById(type + 'Btn');
         if (selectedBtn) {
             selectedBtn.classList.add('selected');
+        }
+
+        // Update asset description panel
+        const assetDescriptionPanel = document.getElementById('assetDescriptionPanel');
+        const assetDescriptionTitle = document.getElementById('assetDescriptionTitle');
+        const assetDescriptionText = document.getElementById('assetDescriptionText');
+
+        if (type && this.assetDescriptions[type]) {
+            const descriptionData = this.assetDescriptions[type];
+            assetDescriptionTitle.textContent = descriptionData.title;
+            assetDescriptionText.textContent = descriptionData.description;
+            assetDescriptionPanel.style.display = 'block'; // Show the panel
+        } else {
+            assetDescriptionPanel.style.display = 'none'; // Hide the panel if no type or description
         }
 
         // If playerAttack is selected, immediately trigger its activation
@@ -1076,16 +996,10 @@ class TowerDefenseGame {
         });
     }
 
-    async spawnLoreEgg() {
-        // Spawn multiple lore eggs across the map (3 by default)
-        const count = 3;
-
-        // Predefined spread positions (tweak as necessary)
-        const positions = [
-            new BABYLON.Vector3(-75, 1, 5),
-            new BABYLON.Vector3(20, 1, 60),
-            new BABYLON.Vector3(70, 1, -30)
-        ];
+    async spawnDestructibleEggs() {
+        // Spawn eggs at the entry points
+        const positions = this.entryPoints;
+        const count = positions.length;
 
         try {
             const meshes = await this.loadModel("assets/models/", "egg.glb");
@@ -1097,15 +1011,15 @@ class TowerDefenseGame {
             const base = meshes[0];
 
             // Ensure arrays exist
-            this.loreEggs = [];
-            this.loreEggsCollected = [];
+            this.destructibleEggs = [];
 
             for (let i = 0; i < count; i++) {
                 // Clone the loaded mesh so each egg is an independent mesh
-                const clone = base.clone(`loreEgg_${i}`);
+                const clone = base.clone(`destructibleEgg_${i}`);
                 if (!clone) continue;
-                // Position choice: use predefined if available otherwise random nearby
-                let pos = positions[i] || new BABYLON.Vector3((Math.random() - 0.5) * 140, 1, (Math.random() - 0.5) * 120);
+                
+                // Use the position from the entry points array
+                let pos = positions[i];
                 
                 const ray = new BABYLON.Ray(new BABYLON.Vector3(pos.x, 1000, pos.z), new BABYLON.Vector3(0, -1, 0));
                 const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
@@ -1115,8 +1029,8 @@ class TowerDefenseGame {
 
                 clone.position = pos.clone();
                 clone.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
-                clone.name = `loreEgg_${i}`;
-                clone.metadata = { isLoreEgg: true, index: i };
+                clone.name = `destructibleEgg_${i}`;
+                clone.metadata = { isDestructibleEgg: true, index: i };
 
                 // Ensure the mesh and its children are pickable and carry parent index metadata
                 try {
@@ -1141,13 +1055,62 @@ class TowerDefenseGame {
                     hl.addMesh(clone, BABYLON.Color3.FromHexString("#FFD700"));
                 } catch (e) {}
 
-                this.loreEggs.push(clone);
-                this.loreEggsCollected.push(false);
+                this.destructibleEggs.push(clone);
             }
 
-            console.log(`🥚 Spawned ${this.loreEggs.length} lore eggs across the map.`);
+            console.log(`🥚 Spawned ${this.destructibleEggs.length} eggs at the entry points.`);
         } catch (err) {
-            console.error('Error spawning multiple lore eggs:', err);
+            console.error('Error spawning multiple eggs:', err);
+        }
+    }
+
+    async spawnLoreCube() {
+        console.log("Attempting to spawn Lore Cube (tentacle_ship.glb)...");
+        try {
+            const meshes = await this.loadModel("assets/models/", "tentacle_ship.glb");
+            if (!meshes || meshes.length === 0) {
+                console.error("❌ Failed to load tentacle_ship.glb for lore cube: No meshes returned.");
+                return;
+            }
+
+            this.loreCubeMesh = meshes[0];
+            this.loreCubeMesh.name = "loreCube";
+            console.log("tentacle_ship.glb loaded successfully. Mesh name:", this.loreCubeMesh.name);
+
+            // Position near an entry point, for example, the first one
+            let pos = new BABYLON.Vector3(0, 0, 0); // Spawn at origin
+            console.log("Target spawn position (before raycast):", pos.x, pos.y, pos.z);
+
+            const ray = new BABYLON.Ray(new BABYLON.Vector3(pos.x, 1000, pos.z), new BABYLON.Vector3(0, -1, 0));
+            const hit = this.scene.pickWithRay(ray, (mesh) => mesh === this.ground);
+            if (hit.hit) {
+                pos.y = hit.pickedPoint.y + 0.1; // Very slightly above ground
+                console.log("Raycast hit ground. Adjusted Y position:", pos.y);
+            } else {
+                pos.y = 0.5; // Fallback if raycast fails, adjusted for visibility
+                console.warn("Raycast did not hit ground. Using fallback Y position:", pos.y);
+            }
+            this.loreCubeMesh.position = pos;
+            this.loreCubeMesh.scaling = new BABYLON.Vector3(0.2, 0.2, 0.2); // Significantly smaller size
+
+            // Make it glow for visibility
+            const glowMaterial = new BABYLON.StandardMaterial("loreCubeGlowMat", this.scene);
+            glowMaterial.emissiveColor = new BABYLON.Color3(0, 1, 0); // Greenish glow
+            glowMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 0);
+            this.loreCubeMesh.material = glowMaterial;
+
+            // Add highlight layer
+            try {
+                const hl = new BABYLON.HighlightLayer("loreCube_hl", this.scene);
+                hl.addMesh(this.loreCubeMesh, BABYLON.Color3.FromHexString("#00FF00"));
+                console.log("Highlight layer added.");
+            } catch (e) {
+                console.error("Error adding highlight layer:", e);
+            }
+
+            console.log("✨ Lore Cube (tentacle_ship.glb) spawned successfully at:", this.loreCubeMesh.position.x, this.loreCubeMesh.position.y, this.loreCubeMesh.position.z);
+        } catch (err) {
+            console.error('Error spawning lore cube:', err);
         }
     }
 
@@ -1183,47 +1146,39 @@ class TowerDefenseGame {
         }, 900);
     }
 
-    disposeEgg(index) {
-        console.log("disposeEgg called for index:", index);
-        if (!this.loreEggs || typeof index !== 'number' || !this.loreEggs[index]) {
-            console.log("disposeEgg: invalid index or egg not found");
-            return;
+    activateLoreCube() {
+        if (this.isPaused) return; // Don't activate if already paused
+
+        console.log("Activating Lore Cube...");
+        this.togglePause(); // Pause the game
+
+        // Show datalog container and load content
+        if (this.datalogContainer && this.datalogIframe) {
+            this.datalogContainer.style.display = 'flex'; // Use flex to center iframe
+            this.datalogIframe.src = 'datalogs/1.html';
+            if (this.eggSound) {
+                this.eggSound.play().catch(e => console.error("Error playing egg audio:", e));
+            }
+
+            // Set timeout to return to game after 20 seconds
+            setTimeout(() => {
+                console.log("Returning to game from Lore Cube.");
+                this.datalogContainer.style.display = 'none';
+                this.datalogIframe.src = ''; // Clear iframe src
+                if (this.loreSound) {
+                    this.loreSound.pause();
+                    this.loreSound.currentTime = 0;
+                }
+                this.togglePause(); // Unpause the game
+                if (this.loreCubeMesh) {
+                    this.loreCubeMesh.dispose(); // Dispose of the cube after interaction
+                    this.loreCubeMesh = null;
+                }
+            }, 60000); // 60 seconds (1 minute)
         }
-        const egg = this.loreEggs[index];
-        console.log("Disposing egg:", egg.name);
-        egg.dispose();
-        this.loreEggs[index] = null;
-        console.log("Egg disposed and reference set to null");
     }
 
-    unlockNextLore() {
-        // Ensure lore arrays exist to avoid runtime errors
-        if (!Array.isArray(this.loreContent)) this.loreContent = [];
-        if (!Array.isArray(this.unlockedLore)) this.unlockedLore = [];
-        if (typeof this.currentLoreIndex !== 'number') this.currentLoreIndex = 0;
-
-        // Unlock the next lore entry (support multiple eggs). No single-egg gate here.
-         
-         if (this.currentLoreIndex < this.loreContent.length) {
-             const loreText = this.loreContent[this.currentLoreIndex];
-             this.unlockedLore.push(loreText);
-             console.log(`📜 Lore Unlocked: ${loreText}`);
-
-             // Play corresponding lore audio
-             const loreAudio = this[`lore${this.currentLoreIndex + 1}Sound`];
-             if (loreAudio) {
-                 loreAudio.play().catch(e => console.error(`Error playing lore audio ${this.currentLoreIndex + 1}:`, e));
-             }
-
-             this.currentLoreIndex++;
-             // Optionally, update pause menu here (will be implemented later)
-             if (this.pauseMenu) {
-                 this.pauseMenu.updateLoreTerminal(this.unlockedLore);
-             }
-         } else {
-             console.log("All lore elements unlocked!");
-         }
-    }
+    
 
     startGameLoop() {
         this.scene.registerBeforeRender(() => {
@@ -1435,6 +1390,19 @@ class TowerDefenseGame {
         this.enemiesSpawned++;
         
         console.log(`👹 Enemy spawned from ${modelFileName} (${this.enemiesSpawned}/${this.enemiesInWave})`);
+
+        // Display first encounter message for new enemy types
+        if (!this.encounteredEnemyTypes) {
+            this.encounteredEnemyTypes = {};
+        }
+
+        if (!this.encounteredEnemyTypes[modelFileName]) {
+            const description = this.assetDescriptions[modelFileName];
+            if (description) {
+                this.displayTemporaryMessage(`New Enemy: ${description.title} - ${description.description}`, 5000);
+                this.encounteredEnemyTypes[modelFileName] = true;
+            }
+        }
     }
 
     createHealthBar(enemyData) {
@@ -1859,6 +1827,18 @@ class TowerDefenseGame {
         particleSystem.start();
     }
 
+    displayTemporaryMessage(message, duration = 3000) {
+        const panel = document.getElementById('temporaryMessagePanel');
+        const text = document.getElementById('temporaryMessageText');
+        if (panel && text) {
+            text.textContent = message;
+            panel.style.display = 'block';
+            clearTimeout(this.messageTimeout);
+            this.messageTimeout = setTimeout(() => {
+                panel.style.display = 'none';
+            }, duration);
+        }
+    }
 
     checkWaveComplete() {
         if (this.gameStarted && this.enemiesSpawned >= this.enemiesInWave && this.enemies.length === 0) {
@@ -1919,6 +1899,27 @@ class TowerDefenseGame {
         }
         console.log(`Switched to ${this.isEnhancedWeather ? 'Enhanced' : 'Simple'} Weather System.`);
     }
+
+    setupDatalogControls() {
+        const openDatalogBtn = document.getElementById('openDatalogBtn');
+        const datalogContainer = document.getElementById('datalogContainer');
+        const datalogIframe = document.getElementById('datalogIframe');
+        const datalogCloseBtn = document.getElementById('datalogCloseBtn');
+
+        if (openDatalogBtn && datalogContainer && datalogIframe && datalogCloseBtn) {
+            openDatalogBtn.addEventListener('click', () => {
+                this.togglePause(); // Pause game when datalog opens
+                datalogIframe.src = 'datalogs/datalog.html';
+                datalogContainer.style.display = 'flex';
+            });
+
+            datalogCloseBtn.addEventListener('click', () => {
+                datalogContainer.style.display = 'none';
+                datalogIframe.src = ''; // Clear iframe src
+                this.togglePause(); // Unpause game when datalog closes
+            });
+        }
+    }
 }
 
 // Global functions
@@ -1940,6 +1941,12 @@ function startNextWave() {
     
     game.updateUI();
     console.log(`🌊 Wave ${game.wave} starting! ${game.enemiesInWave} incoming`);
+
+    // Spawn eggs only on the first wave
+    if (game.wave === 1) {
+        console.log("🥚 Spawning destructible eggs for the first wave.");
+        game.spawnDestructibleEggs();
+    }
 
     // Start objectives when the player engages the wave (if objectives module is loaded)
     try {

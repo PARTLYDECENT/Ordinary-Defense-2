@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Datalog</title>
+    <style>
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+            margin: 0;
+            overflow-y: auto;
+        }
+        h1 {
+            color: #ff6600;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+        .category {
+            margin-bottom: 30px;
+        }
+        .category h2 {
+            color: #ff9900;
+            border-bottom: 1px solid #553322;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .entry {
+            background-color: rgba(30,15,7,0.5);
+            border: 1px solid #553322;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .entry h3 {
+            color: #ffcc00;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        .entry p {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <button id="backButton" style="position: fixed; top: 10px; left: 10px; background-color: #ff6600; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; z-index: 1000;">Back</button>
+    <h1>OPERATIONAL DATALOG</h1>
+
+    <div class="category">
+        <h2>WEAPON SYSTEMS</h2>
+        <div class="entry">
+            <h3>M4 TURRET</h3>
+            <p>A standard automatic turret, effective against light armored units. Good all-around defense.</p>
+        </div>
+        <div class="entry">
+            <h3>RPG LAUNCHER</h3>
+            <p>Launches powerful rockets that deal area-of-effect damage. Ideal for groups of enemies or heavily armored targets.</p>
+        </div>
+        <div class="entry">
+            <h3>RAIL GUN</h3>
+            <p>Fires high-energy laser beams with pinpoint accuracy and piercing power. Excellent against fast, single targets.</p>
+        </div>
+        <div class="entry">
+            <h3>COLONY</h3>
+            <p>Establishes a new settlement, expanding your territory and providing a new target for enemies. Essential for strategic defense.</p>
+        </div>
+        <div class="entry">
+            <h3>PLAYER ATTACK</h3>
+            <p>Call in a player-controlled attack drone for direct offensive support.</p>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>ENGINEERING</h2>
+        <div class="entry">
+            <h3>RESEARCH STATION</h3>
+            <p>Unlock new technologies and upgrades for your towers and units. Invest in research to gain a strategic advantage.</p>
+        </div>
+        <div class="entry">
+            <h3>FARMING UNIT</h3>
+            <p>Generates a steady income of gold over time. Essential for sustaining your defense and expanding your economy.</p>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>CONTROLS</h2>
+        <div class="entry">
+            <h3>WASD</h3>
+            <p>Move Camera: Use W, A, S, D keys to navigate the camera across the battlefield.</p>
+        </div>
+        <div class="entry">
+            <h3>SPACE / SHIFT</h3>
+            <p>Move Up / Down: Use the SPACE bar to move the camera up and the SHIFT key to move it down.</p>
+        </div>
+        <div class="entry">
+            <h3>MOUSE</h3>
+            <p>Look Around: Move the mouse to change the camera's viewing direction.</p>
+        </div>
+        <div class="entry">
+            <h3>CLICK</h3>
+            <p>Deploy Weapon: Left-click to deploy selected weapons or interact with UI elements.</p>
+        </div>
+        <div class="entry">
+            <h3>P</h3>
+            <p>Pause Game: Press 'P' to pause or unpause the game, allowing you to strategize.</p>
+        </div>
+        <div class="entry">
+            <h3>ESC</h3>
+            <p>Release Cursor: Press 'ESC' to release the mouse cursor from game control, enabling interaction with external applications or menus.</p>
+        </div>
+        <div class="entry">
+            <h3>Y</h3>
+            <p>Interact (Primary): Press 'Y' to interact with primary game objects and activate their functions.</p>
+        </div>
+        <div class="entry">
+            <h3>T</h3>
+            <p>Interact (Secondary): Press 'T' to interact with secondary game objects or toggle specific features.</p>
+        </div>
+        <div class="entry">
+            <h3>E</h3>
+            <p>Interact (Contextual): Press 'E' for contextual interactions, suchs as picking up items or opening doors.</p>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>ENEMY INTEL</h2>
+        <div class="entry">
+            <h3>STANDARD ENEMY</h3>
+            <p>A common ground unit. Weak armor, but can overwhelm in numbers.</p>
+        </div>
+        <div class="entry">
+            <h3>HEAVY ENEMY</h3>
+            <p>A more resilient ground unit with thicker armor. Requires sustained fire.</p>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>LORE</h2>
+        <div class="entry">
+            <h3>ALIEN EGG</h3>
+            <p>A fragile alien egg. Destroy it to prevent enemy spawns.</p>
+        </div>
+        <div class="entry">
+            <h3>LORE CUBE</h3>
+            <p>An ancient alien artifact containing valuable lore data. Interact to uncover secrets.</p>
+        </div>
+    </div>
+
+    <div class="category">
+        <h2>AUDIO LOGS</h2>
+        <div class="entry">
+            <h3>MUSIC TRACK 1</h3>
+            <p>An atmospheric background track.</p>
+        </div>
+        <div class="entry">
+            <h3>MUSIC TRACK 11</h3>
+            <p>Another atmospheric background track.</p>
+        </div>
+    </div>
+    <script>
+        document.getElementById('backButton').addEventListener('click', function() {
+            window.parent.postMessage('closeDatalog', '*');
+        });
+    </script>
+</body>
+</html>
