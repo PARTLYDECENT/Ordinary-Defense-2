@@ -689,6 +689,26 @@
             visibility: visible;
             opacity: 1;
         }
+
+        #joystick-container {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 100px;
+            height: 100px;
+            display: none;
+        }
+
+        #fire-button {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -933,5 +953,8 @@
     <audio id="sfx1Sound" src="assets/music/sfx1.wav" preload="auto"></audio>
     <audio id="fartSound" src="assets/music/fart.mp3" preload="auto"></audio>
     <audio id="eggSound" src="assets/music/egg1.mp3" preload="auto"></audio>
+    <div id="joystick-container"></div>
+    <div id="fire-button"></div>
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.2/dist/nipplejs.min.js"></script>
 </body>
 </html>

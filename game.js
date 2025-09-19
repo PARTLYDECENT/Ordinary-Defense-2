@@ -629,8 +629,45 @@ class TowerDefenseGame {
                 this.targetCameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetCameraRotation.x));
             }
         });
-
+        this.setupMobileControls();
         console.log("🎮 Controls setup with pause system");
+    }
+
+    setupMobileControls() {
+        if ('ontouchstart' in window) {
+            document.getElementById('joystick-container').style.display = 'block';
+            document.getElementById('fire-button').style.display = 'block';
+
+            const joystickContainer = document.getElementById('joystick-container');
+            const fireButton = document.getElementById('fire-button');
+
+            const options = {
+                zone: joystickContainer,
+                mode: 'static',
+                position: { left: '50%', top: '50%' },
+                color: 'white'
+            };
+            const manager = nipplejs.create(options);
+
+            this.joystick = { x: 0, y: 0 };
+
+            manager.on('move', (evt, data) => {
+                const angle = data.angle.radian;
+                const force = data.force;
+                this.joystick.x = Math.cos(angle) * force;
+                this.joystick.y = Math.sin(angle) * force;
+            });
+
+            manager.on('end', () => {
+                this.joystick.x = 0;
+                this.joystick.y = 0;
+            });
+
+            fireButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.placeTowerAtCrosshair();
+            });
+        }
     }
 
     togglePause() {
@@ -1240,6 +1277,11 @@ class TowerDefenseGame {
             if (this.keys['KeyS']) movement.z -= 1;
             if (this.keys['KeyA']) movement.x -= 1;
             if (this.keys['KeyD']) movement.x += 1;
+
+            if (this.joystick && ('ontouchstart' in window)) {
+                movement.x += this.joystick.x;
+                movement.z -= this.joystick.y;
+            }
             
             if (movement.length() > 0) {
                 movement.normalize(); // Ensure consistent speed in all directions
