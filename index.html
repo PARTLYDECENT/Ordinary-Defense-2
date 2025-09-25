@@ -5,6 +5,7 @@
     <title>ORDINARY DEFENSE 2 - Terravivaria </title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="hud.css">
+    <link rel="stylesheet" href="popups.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Share+Tech+Mono:wght@400&display=swap');
         
@@ -715,8 +716,12 @@
         <div id="mainMenu" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/images/bg2.jpg'); background-size: cover; background-position: center; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: broken-flicker 5s infinite linear; gap: 20px;">
         <h1 class="advanced-title-shader">ORDINARY DEFENSE 2</h1>
         <div class="tooltip">
-                        <button id="startGameBtn" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3);">Start Game</button>
-            <span class="tooltiptext">Begin your defense against the alien invasion.</span>
+            <button id="regularModeBtn" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3);">Regular TD</button>
+            <span class="tooltiptext">The classic tower defense experience.</span>
+        </div>
+        <div class="tooltip">
+            <button id="alienBuilderModeBtn" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3);">Alien Builder Mode</button>
+            <span class="tooltiptext">A new mode where enemies build their own base.</span>
         </div>
         <div class="tooltip">
             <a id="patreonBtn" href="https://www.patreon.com/c/DamionRichter" target="_blank" style="background: rgba(204, 34, 0, 0.3); border: 1px solid rgba(255, 51, 0, 0.6); color: #fff; padding: 15px 30px; cursor: pointer; font-family: 'Roboto Condensed', sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1.5px; transition: all 0.3s ease-in-out; text-shadow: 0 1px 2px rgba(0,0,0,0.4); border-radius: 10px; backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.3); border-left: 1px solid rgba(255, 255, 255, 0.3); text-decoration: none;">Patreon</a>
@@ -830,6 +835,15 @@
                         </button>
                     </div>
                     <div class="tooltip">
+                        <button class="tower-btn" onclick="selectTowerType('light')" id="lightBtn">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="tower-icon">💡</span>
+                                <span>LIGHT TOWER</span>
+                            </div>
+                            <span class="tower-price">$50</span>
+                        </button>
+                    </div>
+                    <div class="tooltip">
                         <button class="tower-btn" onclick="selectTowerType('colony')" id="colonyBtn">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <span class="tower-icon">🏡</span>
@@ -926,9 +940,12 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/materials/babylonjs.materials.min.js"></script>
     <script src="https://cdn.babylonjs.com/procedural-textures/babylonjs.proceduralTextures.min.js"></script>
+    <script src="popup.js"></script>
     <script src="skybox.js"></script>
+    <script src="flashlight.js"></script>
     <script src="weather.js"></script>
     <script src="weather2.js"></script>
+    <script src="weather_orchestrator.js"></script>
     <script src="player.js"></script>
     <script src="enemy.js"></script>
     <script src="readmes and spine/pause.js"></script>
@@ -936,9 +953,9 @@
     <script src="plantlife.js"></script>
     <script src="tentacle_orb.js"></script>
     <script src="ufo.js"></script> <!-- New: UFO script -->
+    <script src="alienbase.js"></script>
     <script src="mainmenu.js"></script>
     <script src="objectives.js"></script>
-    <script src="game.js"></script>
     <audio id="damageSound" src="assets/music/damage1.mp3" preload="auto"></audio>
     <audio id="shotBasicSound" src="assets/music/shot1.mp3" preload="auto"></audio>
     <audio id="shotMissileSound" src="assets/music/shot2.mp3" preload="auto"></audio>

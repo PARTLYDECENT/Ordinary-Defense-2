@@ -45,8 +45,8 @@ The project is organized into several files and directories, each with a specifi
 -   `tentacle_orb.js`: Defines the `TentacleOrb` class, a special type of enemy with unique behaviors.
 -   `test.html`: An HTML file for testing purposes.
 -   `ufo.js`: Defines the `UFO` class, another special enemy type.
--   `weather.js`: Implements the `EnhancedWeatherSystem` for rain effects.
--   `weather2.js`: Implements a more complex `SimpleWeatherSystem` with a variety of spectacular weather effects.
+-   `weather.js`: Implements a comprehensive weather system with a variety of spectacular weather effects.
+
 
 ### `assets/` Directory
 
@@ -86,7 +86,7 @@ The player can move around the map using the WASD keys and the mouse. The player
 
 ### Weather System
 
-The game features a dynamic weather system that can create various effects, from simple rain to spectacular cosmic storms and fire tornadoes. The weather is managed by the `EnhancedWeatherSystem` and `SimpleWeatherSystem` classes in `weather.js` and `weather2.js`, respectively.
+The game features a dynamic weather system that can create various effects, from simple rain to spectacular cosmic storms and fire tornadoes. The weather is managed by the `SimpleWeatherSystem` class in `weather.js`.
 
 ## 5. Asset Pipeline
 
@@ -110,7 +110,7 @@ The game features a dynamic weather system that can create various effects, from
 
 ### Customizing Weather
 
-The weather system is highly customizable. You can create new weather effects by defining new particle systems and post-processing effects in `weather2.js`.
+The weather system is highly customizable. You can create new weather effects by defining new particle systems and post-processing effects in `weather.js`.
 
 ## 7. Babylon.js Resources
 

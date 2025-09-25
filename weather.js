@@ -1,418 +1,237 @@
+/**
+ * Enhanced Autonomous Weather System for Babylon.js
+ * Manages clear, rain, snow, and storm effects with smooth transitions and an automatic cycle.
+ * The system is self-contained and runs autonomously after initialization.
+ */
 class EnhancedWeatherSystem {
+    /**
+     * @param {BABYLON.Scene} scene The Babylon.js scene.
+     */
     constructor(scene) {
         this.scene = scene;
-        this.rainParticles = null;
-        this.bloodDroplets = null;
-        this.ambientDrip = null;
-        this.organicChunks = null;
-        this.mist = null;
-        this.sparks = null;
-        this.shadowEntities = null;
-        this.pulseMembrane = null;
+        this.activeWeather = 'clear';
+        this.intensity = 1.0;
+        this._weatherCycleTimer = null; // Timer for the autonomous cycle
+
+        // Particle systems and lighting
+        this._rainParticles = null;
+        this._snowParticles = null;
+        this._lightningLight = null;
+        this._lightningTimer = null;
+
+        // Main ambient light for the scene
+        this.ambientLight = new BABYLON.HemisphericLight("ambientLight", new BABYLON.Vector3(0, 1, 0), this.scene);
+
+        // Initialize all weather assets
+        this._createRainSystem();
+        this._createSnowSystem();
+        this._createLightning();
         
-        this.flickerInterval = null;
-        this.pulseInterval = null;
-        this.ambientSoundTimer = null;
-        this.entitySpawnTimer = null;
-        
-        // Multiple light sources for maximum unsettling effect
-        this.mainLight = new BABYLON.HemisphericLight("MainLight", new BABYLON.Vector3(0, 1, 0), this.scene);
-        this.mainLight.intensity = 0.02;
-        this.mainLight.diffuse = new BABYLON.Color3(0.7, 0.9, 0.3); // Sickly green-yellow
-        
-        this.redLight = new BABYLON.HemisphericLight("BloodLight", new BABYLON.Vector3(0, -1, 0), this.scene);
-        this.redLight.intensity = 0.015;
-        this.redLight.diffuse = new BABYLON.Color3(0.8, 0.1, 0.1); // Deep red undertone
-        
-        this.strobeLight = new BABYLON.DirectionalLight("StrobeLight", new BABYLON.Vector3(0, -1, 0), this.scene);
-        this.strobeLight.intensity = 0;
-        this.strobeLight.diffuse = new BABYLON.Color3(1, 1, 1);
-        
-        this.startLightSystem();
-        this.startAmbientHorror();
+        // Start the autonomous weather cycle
+        this._startWeatherCycle();
+        console.log("🌦️ Enhanced Autonomous Weather System is now running.");
     }
 
-    startLightSystem() {
-        let flickerPhase = 0;
-        this.flickerInterval = setInterval(() => {
-            flickerPhase += 0.1;
-            
-            // Main fluorescent flicker
-            if (Math.random() < 0.25) {
-                this.mainLight.intensity = Math.random() * 0.06 + 0.005;
-                setTimeout(() => {
-                    this.mainLight.intensity = 0.02 + Math.sin(flickerPhase) * 0.01;
-                }, Math.random() * 200 + 30);
-            }
-            
-            // Occasional harsh strobe
-            if (Math.random() < 0.03) {
-                this.strobeLight.intensity = 0.3;
-                setTimeout(() => { this.strobeLight.intensity = 0; }, 80);
-                setTimeout(() => {
-                    if (Math.random() < 0.5) {
-                        this.strobeLight.intensity = 0.2;
-                        setTimeout(() => { this.strobeLight.intensity = 0; }, 40);
-                    }
-                }, 120);
-            }
-            
-            // Red light pulse with the "heartbeat" of the place
-            this.redLight.intensity = 0.015 + Math.sin(flickerPhase * 2) * 0.008;
-            
-        }, 150);
+    // =================================================================================================
+    // INITIALIZATION METHODS
+    // =================================================================================================
+
+    _createRainSystem() {
+        this._rainParticles = new BABYLON.ParticleSystem("rain", 4000, this.scene);
+        this._rainParticles.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+        this._rainParticles.emitter = new BABYLON.Vector3(0, 80, 0);
+        this._rainParticles.minEmitBox = new BABYLON.Vector3(-100, 0, -100);
+        this._rainParticles.maxEmitBox = new BABYLON.Vector3(100, 0, 100);
+        this._rainParticles.color1 = new BABYLON.Color4(1.0, 0.2, 0.2, 1.0); // Bright red
+        this._rainParticles.color2 = new BABYLON.Color4(0.8, 0.0, 0.0, 1.0); // Deep red
+        this._rainParticles.colorDead = new BABYLON.Color4(0.2, 0, 0, 0.0); // Dark red fade
+        this._rainParticles.minSize = 0.1;
+        this._rainParticles.maxSize = 0.3;
+        this._rainParticles.minLifeTime = 0.5;
+        this._rainParticles.maxLifeTime = 1.5;
+        this._rainParticles.gravity = new BABYLON.Vector3(0, -25, 0);
+        this._rainParticles.direction1 = new BABYLON.Vector3(-7, -8, 3);
+        this._rainParticles.direction2 = new BABYLON.Vector3(7, -8, -3);
+        this._rainParticles.minEmitPower = 1;
+        this._rainParticles.maxEmitPower = 3;
+        this._rainParticles.updateSpeed = 0.005;
+        this._rainParticles.emitRate = 0;
+        this._rainParticles.start();
     }
 
-    startAmbientHorror() {
-        // Simulate distant sounds through light variations
-        this.ambientSoundTimer = setInterval(() => {
-            if (Math.random() < 0.08) {
-                // "Distant scream" - brief light dim
-                let originalIntensity = this.mainLight.intensity;
-                this.mainLight.intensity *= 0.3;
-                setTimeout(() => {
-                    this.mainLight.intensity = originalIntensity;
-                }, 800 + Math.random() * 1200);
-            }
-        }, 3000);
+    _createSnowSystem() {
+        this._snowParticles = new BABYLON.ParticleSystem("snow", 3000, this.scene);
+        this._snowParticles.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+        this._snowParticles.emitter = new BABYLON.Vector3(0, 80, 0);
+        this._snowParticles.minEmitBox = new BABYLON.Vector3(-100, 0, -100);
+        this._snowParticles.maxEmitBox = new BABYLON.Vector3(100, 0, 100);
+        this._snowParticles.color1 = new BABYLON.Color4(1.0, 1.0, 1.0, 1.0);
+        this._snowParticles.color2 = new BABYLON.Color4(0.9, 0.9, 0.9, 1.0);
+        this._snowParticles.colorDead = new BABYLON.Color4(1.0, 1.0, 1.0, 0.0);
+        this._snowParticles.minSize = 0.2;
+        this._snowParticles.maxSize = 0.5;
+        this._snowParticles.minLifeTime = 4;
+        this._snowParticles.maxLifeTime = 8;
+        this._snowParticles.gravity = new BABYLON.Vector3(0, -2, 0);
+        this._snowParticles.direction1 = new BABYLON.Vector3(-1, -4, -1);
+        this._snowParticles.direction2 = new BABYLON.Vector3(1, -4, 1);
+        this._snowParticles.minAngularSpeed = -1;
+        this._snowParticles.maxAngularSpeed = 1;
+        this._snowParticles.minEmitPower = 0.5;
+        this._snowParticles.maxEmitPower = 1.5;
+        this._snowParticles.updateSpeed = 0.004;
+        this._snowParticles.emitRate = 0;
+        this._snowParticles.start();
     }
 
-    startRain() {
-        if (this.rainParticles) {
-            this.startAllSystems();
-            return;
-        }
-
-        const baseArea = 60;
-        const expandedArea = baseArea * 12; // Massive coverage
-        const emitterHeight = 80;
-        const highEmitter = emitterHeight + 60;
-
-        // 1. MAIN GELATINOUS BLOOD RAIN
-        this.rainParticles = new BABYLON.ParticleSystem("bloodRain", 4500, this.scene);
-        this.rainParticles.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.rainParticles.emitter = new BABYLON.Vector3(0, emitterHeight, 0);
-
-        this.rainParticles.minEmitBox = new BABYLON.Vector3(-expandedArea, 0, -expandedArea);
-        this.rainParticles.maxEmitBox = new BABYLON.Vector3(expandedArea, 0, expandedArea);
-
-        this.rainParticles.color1 = new BABYLON.Color4(0.9, 0.03, 0.03, 0.95);
-        this.rainParticles.color2 = new BABYLON.Color4(0.4, 0.01, 0.01, 0.98);
-        this.rainParticles.colorDead = new BABYLON.Color4(0.2, 0.005, 0.005, 0.4);
-
-        this.rainParticles.minSize = 0.18;
-        this.rainParticles.maxSize = 0.45;
-        this.rainParticles.minLifeTime = 3.0;
-        this.rainParticles.maxLifeTime = 5.5;
-        this.rainParticles.emitRate = 3200;
-        this.rainParticles.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.rainParticles.gravity = new BABYLON.Vector3(0, -12, 0);
-        this.rainParticles.direction1 = new BABYLON.Vector3(-4, -10, 4);
-        this.rainParticles.direction2 = new BABYLON.Vector3(4, -10, -4);
-        this.rainParticles.minAngularSpeed = -Math.PI * 0.8;
-        this.rainParticles.maxAngularSpeed = Math.PI * 0.8;
-        this.rainParticles.minEmitPower = 2;
-        this.rainParticles.maxEmitPower = 5;
-        this.rainParticles.updateSpeed = 0.007;
-        this.rainParticles.targetStopDuration = 0;
-        this.rainParticles.disposeOnStop = false;
-
-        // 2. HEAVY ORGANIC CHUNKS
-        this.bloodDroplets = new BABYLON.ParticleSystem("organicMatter", 1200, this.scene);
-        this.bloodDroplets.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.bloodDroplets.emitter = new BABYLON.Vector3(0, highEmitter, 0);
-
-        this.bloodDroplets.minEmitBox = new BABYLON.Vector3(-expandedArea * 0.8, 0, -expandedArea * 0.8);
-        this.bloodDroplets.maxEmitBox = new BABYLON.Vector3(expandedArea * 0.8, 0, expandedArea * 0.8);
-
-        this.bloodDroplets.color1 = new BABYLON.Color4(0.25, 0.008, 0.008, 1.0);
-        this.bloodDroplets.color2 = new BABYLON.Color4(0.12, 0.003, 0.003, 1.0);
-        this.bloodDroplets.colorDead = new BABYLON.Color4(0.06, 0, 0, 0.9);
-
-        this.bloodDroplets.minSize = 0.3;
-        this.bloodDroplets.maxSize = 0.8;
-        this.bloodDroplets.minLifeTime = 4.0;
-        this.bloodDroplets.maxLifeTime = 7.0;
-        this.bloodDroplets.emitRate = 600;
-        this.bloodDroplets.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.bloodDroplets.gravity = new BABYLON.Vector3(0, -30, 0);
-        this.bloodDroplets.direction1 = new BABYLON.Vector3(-1.5, -18, 1.5);
-        this.bloodDroplets.direction2 = new BABYLON.Vector3(1.5, -18, -1.5);
-        this.bloodDroplets.minAngularSpeed = -Math.PI * 0.3;
-        this.bloodDroplets.maxAngularSpeed = Math.PI * 0.3;
-        this.bloodDroplets.minEmitPower = 0.5;
-        this.bloodDroplets.maxEmitPower = 2;
-        this.bloodDroplets.updateSpeed = 0.005;
-        this.bloodDroplets.targetStopDuration = 0;
-        this.bloodDroplets.disposeOnStop = false;
-
-        // 3. CEILING MEMBRANE DRIPS
-        this.ambientDrip = new BABYLON.ParticleSystem("membraneDrips", 400, this.scene);
-        this.ambientDrip.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.ambientDrip.emitter = new BABYLON.Vector3(0, highEmitter + 20, 0);
-
-        this.ambientDrip.minEmitBox = new BABYLON.Vector3(-expandedArea * 1.5, 0, -expandedArea * 1.5);
-        this.ambientDrip.maxEmitBox = new BABYLON.Vector3(expandedArea * 1.5, 0, expandedArea * 1.5);
-
-        this.ambientDrip.color1 = new BABYLON.Color4(0.08, 0.02, 0.02, 0.85);
-        this.ambientDrip.color2 = new BABYLON.Color4(0.04, 0.01, 0.01, 0.95);
-        this.ambientDrip.colorDead = new BABYLON.Color4(0.02, 0, 0, 0.5);
-
-        this.ambientDrip.minSize = 0.12;
-        this.ambientDrip.maxSize = 0.5;
-        this.ambientDrip.minLifeTime = 5.0;
-        this.ambientDrip.maxLifeTime = 8.5;
-        this.ambientDrip.emitRate = 150;
-        this.ambientDrip.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.ambientDrip.gravity = new BABYLON.Vector3(0, -22, 0);
-        this.ambientDrip.direction1 = new BABYLON.Vector3(0, -25, 0);
-        this.ambientDrip.direction2 = new BABYLON.Vector3(0, -25, 0);
-        this.ambientDrip.minAngularSpeed = 0;
-        this.ambientDrip.maxAngularSpeed = 0;
-        this.ambientDrip.minEmitPower = 0.3;
-        this.ambientDrip.maxEmitPower = 1;
-        this.ambientDrip.updateSpeed = 0.004;
-        this.ambientDrip.targetStopDuration = 0;
-        this.ambientDrip.disposeOnStop = false;
-
-        // 4. FLESHY ORGANIC CHUNKS (NEW)
-        this.organicChunks = new BABYLON.ParticleSystem("fleshChunks", 800, this.scene);
-        this.organicChunks.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.organicChunks.emitter = new BABYLON.Vector3(0, highEmitter + 40, 0);
-
-        this.organicChunks.minEmitBox = new BABYLON.Vector3(-expandedArea * 0.6, 0, -expandedArea * 0.6);
-        this.organicChunks.maxEmitBox = new BABYLON.Vector3(expandedArea * 0.6, 0, expandedArea * 0.6);
-
-        // Sickly flesh tones mixed with blood
-        this.organicChunks.color1 = new BABYLON.Color4(0.4, 0.15, 0.08, 1.0);
-        this.organicChunks.color2 = new BABYLON.Color4(0.6, 0.05, 0.02, 1.0);
-        this.organicChunks.colorDead = new BABYLON.Color4(0.2, 0.03, 0.01, 0.7);
-
-        this.organicChunks.minSize = 0.4;
-        this.organicChunks.maxSize = 1.2; // Massive chunks
-        this.organicChunks.minLifeTime = 3.5;
-        this.organicChunks.maxLifeTime = 6.0;
-        this.organicChunks.emitRate = 120; // Infrequent but horrifying
-        this.organicChunks.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.organicChunks.gravity = new BABYLON.Vector3(0, -35, 0);
-        this.organicChunks.direction1 = new BABYLON.Vector3(-2, -20, 2);
-        this.organicChunks.direction2 = new BABYLON.Vector3(2, -20, -2);
-        this.organicChunks.minAngularSpeed = -Math.PI;
-        this.organicChunks.maxAngularSpeed = Math.PI;
-        this.organicChunks.minEmitPower = 1;
-        this.organicChunks.maxEmitPower = 4;
-        this.organicChunks.updateSpeed = 0.004;
-        this.organicChunks.targetStopDuration = 0;
-        this.organicChunks.disposeOnStop = false;
-
-        // 5. BLOOD MIST/FOG (NEW)
-        this.mist = new BABYLON.ParticleSystem("bloodMist", 2000, this.scene);
-        this.mist.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.mist.emitter = new BABYLON.Vector3(0, 10, 0); // Ground level
-
-        this.mist.minEmitBox = new BABYLON.Vector3(-expandedArea * 2, 0, -expandedArea * 2);
-        this.mist.maxEmitBox = new BABYLON.Vector3(expandedArea * 2, 0, expandedArea * 2);
-
-        this.mist.color1 = new BABYLON.Color4(0.3, 0.02, 0.02, 0.15);
-        this.mist.color2 = new BABYLON.Color4(0.2, 0.01, 0.01, 0.08);
-        this.mist.colorDead = new BABYLON.Color4(0.1, 0.005, 0.005, 0.02);
-
-        this.mist.minSize = 2.0;
-        this.mist.maxSize = 8.0; // Large misty particles
-        this.mist.minLifeTime = 8.0;
-        this.mist.maxLifeTime = 15.0;
-        this.mist.emitRate = 200;
-        this.mist.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.mist.gravity = new BABYLON.Vector3(0, 2, 0); // Rises slowly
-        this.mist.direction1 = new BABYLON.Vector3(-1, 1, -1);
-        this.mist.direction2 = new BABYLON.Vector3(1, 3, 1);
-        this.mist.minAngularSpeed = -Math.PI * 0.1;
-        this.mist.maxAngularSpeed = Math.PI * 0.1;
-        this.mist.minEmitPower = 0.5;
-        this.mist.maxEmitPower = 2;
-        this.mist.updateSpeed = 0.003;
-        this.mist.targetStopDuration = 0;
-        this.mist.disposeOnStop = false;
-
-        // 6. ELECTRICAL SPARKS (NEW)
-        this.sparks = new BABYLON.ParticleSystem("electricSparks", 600, this.scene);
-        this.sparks.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.sparks.emitter = new BABYLON.Vector3(0, emitterHeight + 30, 0);
-
-        this.sparks.minEmitBox = new BABYLON.Vector3(-expandedArea * 0.3, 0, -expandedArea * 0.3);
-        this.sparks.maxEmitBox = new BABYLON.Vector3(expandedArea * 0.3, 0, expandedArea * 0.3);
-
-        this.sparks.color1 = new BABYLON.Color4(1.0, 1.0, 0.8, 1.0);
-        this.sparks.color2 = new BABYLON.Color4(0.8, 0.9, 1.0, 1.0);
-        this.sparks.colorDead = new BABYLON.Color4(0.3, 0.3, 0.5, 0.0);
-
-        this.sparks.minSize = 0.05;
-        this.sparks.maxSize = 0.15;
-        this.sparks.minLifeTime = 0.3;
-        this.sparks.maxLifeTime = 1.2;
-        this.sparks.emitRate = 80; // Occasional sparks
-        this.sparks.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
-        this.sparks.gravity = new BABYLON.Vector3(0, -50, 0);
-        this.sparks.direction1 = new BABYLON.Vector3(-8, -10, -8);
-        this.sparks.direction2 = new BABYLON.Vector3(8, -5, 8);
-        this.sparks.minAngularSpeed = -Math.PI * 3;
-        this.sparks.maxAngularSpeed = Math.PI * 3;
-        this.sparks.minEmitPower = 8;
-        this.sparks.maxEmitPower = 15;
-        this.sparks.updateSpeed = 0.02;
-        this.sparks.targetStopDuration = 0;
-        this.sparks.disposeOnStop = false;
-
-        // 7. SHADOW ENTITIES (NEW)
-        this.shadowEntities = new BABYLON.ParticleSystem("shadowFigures", 300, this.scene);
-        this.shadowEntities.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.shadowEntities.emitter = new BABYLON.Vector3(0, 20, 0);
-
-        this.shadowEntities.minEmitBox = new BABYLON.Vector3(-expandedArea * 3, 0, -expandedArea * 3);
-        this.shadowEntities.maxEmitBox = new BABYLON.Vector3(expandedArea * 3, 0, expandedArea * 3);
-
-        this.shadowEntities.color1 = new BABYLON.Color4(0.0, 0.0, 0.0, 0.4);
-        this.shadowEntities.color2 = new BABYLON.Color4(0.02, 0.0, 0.02, 0.6);
-        this.shadowEntities.colorDead = new BABYLON.Color4(0.0, 0.0, 0.0, 0.0);
-
-        this.shadowEntities.minSize = 1.5;
-        this.shadowEntities.maxSize = 4.0; // Large shadow figures
-        this.shadowEntities.minLifeTime = 12.0;
-        this.shadowEntities.maxLifeTime = 25.0;
-        this.shadowEntities.emitRate = 8; // Very rare appearances
-        this.shadowEntities.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.shadowEntities.gravity = new BABYLON.Vector3(0, 0, 0); // Float
-        this.shadowEntities.direction1 = new BABYLON.Vector3(-0.5, 0, -0.5);
-        this.shadowEntities.direction2 = new BABYLON.Vector3(0.5, 0, 0.5);
-        this.shadowEntities.minAngularSpeed = -Math.PI * 0.05;
-        this.shadowEntities.maxAngularSpeed = Math.PI * 0.05;
-        this.shadowEntities.minEmitPower = 0.2;
-        this.shadowEntities.maxEmitPower = 1.0;
-        this.shadowEntities.updateSpeed = 0.001;
-        this.shadowEntities.targetStopDuration = 0;
-        this.shadowEntities.disposeOnStop = false;
-
-        // 8. PULSING MEMBRANE EFFECT (NEW)
-        this.pulseMembrane = new BABYLON.ParticleSystem("pulseMembrane", 1500, this.scene);
-        this.pulseMembrane.particleTexture = new BABYLON.Texture("assets/images/flare.png", this.scene);
-        this.pulseMembrane.emitter = new BABYLON.Vector3(0, highEmitter + 50, 0);
-
-        this.pulseMembrane.minEmitBox = new BABYLON.Vector3(-expandedArea * 4, -5, -expandedArea * 4);
-        this.pulseMembrane.maxEmitBox = new BABYLON.Vector3(expandedArea * 4, 5, expandedArea * 4);
-
-        this.pulseMembrane.color1 = new BABYLON.Color4(0.15, 0.08, 0.12, 0.1);
-        this.pulseMembrane.color2 = new BABYLON.Color4(0.08, 0.04, 0.06, 0.05);
-        this.pulseMembrane.colorDead = new BABYLON.Color4(0.02, 0.01, 0.02, 0.01);
-
-        this.pulseMembrane.minSize = 5.0;
-        this.pulseMembrane.maxSize = 15.0;
-        this.pulseMembrane.minLifeTime = 20.0;
-        this.pulseMembrane.maxLifeTime = 40.0;
-        this.pulseMembrane.emitRate = 30;
-        this.pulseMembrane.blendMode = BABYLON.ParticleSystem.BLENDMODE_ALPHABLEND;
-        this.pulseMembrane.gravity = new BABYLON.Vector3(0, -1, 0);
-        this.pulseMembrane.direction1 = new BABYLON.Vector3(-0.2, -0.5, -0.2);
-        this.pulseMembrane.direction2 = new BABYLON.Vector3(0.2, -0.5, 0.2);
-        this.pulseMembrane.minAngularSpeed = -Math.PI * 0.02;
-        this.pulseMembrane.maxAngularSpeed = Math.PI * 0.02;
-        this.pulseMembrane.minEmitPower = 0.1;
-        this.pulseMembrane.maxEmitPower = 0.5;
-        this.pulseMembrane.updateSpeed = 0.002;
-        this.pulseMembrane.targetStopDuration = 0;
-        this.pulseMembrane.disposeOnStop = false;
-
-        this.startAllSystems();
-        this.startEntityEvents();
+    _createLightning() {
+        this._lightningLight = new BABYLON.PointLight("lightning", new BABYLON.Vector3(0, 100, 0), this.scene);
+        this._lightningLight.diffuse = new BABYLON.Color3(1, 1, 1);
+        this._lightningLight.intensity = 0;
     }
 
-    startAllSystems() {
-        if (this.rainParticles) this.rainParticles.start();
-        if (this.bloodDroplets) this.bloodDroplets.start();
-        if (this.ambientDrip) this.ambientDrip.start();
-        if (this.organicChunks) this.organicChunks.start();
-        if (this.mist) this.mist.start();
-        if (this.sparks) this.sparks.start();
-        if (this.shadowEntities) this.shadowEntities.start();
-        if (this.pulseMembrane) this.pulseMembrane.start();
+    // =================================================================================================
+    // AUTONOMOUS CYCLE
+    // =================================================================================================
+    
+    _startWeatherCycle() {
+        const cycle = () => {
+            const weatherTypes = ['clear', 'rain', 'snow', 'storm'];
+            let newWeather;
+
+            // Pick a new weather type that is different from the current one
+            do {
+                newWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+            } while (newWeather === this.activeWeather);
+
+            const newIntensity = (Math.random() * 0.5 + 0.3) * 0.8; // Reduced intensity range from 0.24 to 0.64
+
+            this.setWeather(newWeather, newIntensity);
+
+            // Schedule the next weather change with a longer random delay (between 3 and 9 minutes)
+            const nextChangeDelay = (180000 + Math.random() * 360000); // 3-9 minutes
+            this._weatherCycleTimer = setTimeout(cycle, nextChangeDelay);
+        };
+
+        // Start the first cycle after a longer initial delay
+        this._weatherCycleTimer = setTimeout(cycle, 45000); // Wait 45 seconds before first change
     }
 
-    startEntityEvents() {
-        // Periodic "entity movement" events
-        this.entitySpawnTimer = setInterval(() => {
-            if (Math.random() < 0.15) {
-                // Temporary burst of shadow entities
-                if (this.shadowEntities) {
-                    let originalRate = this.shadowEntities.emitRate;
-                    this.shadowEntities.emitRate = 25;
-                    setTimeout(() => {
-                        this.shadowEntities.emitRate = originalRate;
-                    }, 2000);
-                }
-                
-                // Increase organic chunk fall during "events"
-                if (this.organicChunks) {
-                    let originalRate = this.organicChunks.emitRate;
-                    this.organicChunks.emitRate = 400;
-                    setTimeout(() => {
-                        this.organicChunks.emitRate = originalRate;
-                    }, 3000);
-                }
-            }
-        }, 8000);
-    }
+    // =================================================================================================
+    // PUBLIC CONTROL METHODS (Can still be used to override the cycle)
+    // =================================================================================================
 
-    stopRain() {
-        if (this.rainParticles) this.rainParticles.stop();
-        if (this.bloodDroplets) this.bloodDroplets.stop();
-        if (this.ambientDrip) this.ambientDrip.stop();
-        if (this.organicChunks) this.organicChunks.stop();
-        if (this.mist) this.mist.stop();
-        if (this.sparks) this.sparks.stop();
-        if (this.shadowEntities) this.shadowEntities.stop();
-        if (this.pulseMembrane) this.pulseMembrane.stop();
+    setWeather(weatherType, intensity = 1.0) {
+        if (this.activeWeather === weatherType) return;
+
+        this.intensity = Math.max(0.1, Math.min(1.0, intensity));
+        this._stopStorm();
+        this._transitionWeather(this.activeWeather, weatherType);
+        this.activeWeather = weatherType;
     }
 
     dispose() {
-        // Clear all timers
-        if (this.flickerInterval) {
-            clearInterval(this.flickerInterval);
-            this.flickerInterval = null;
+        clearTimeout(this._weatherCycleTimer);
+        this._stopStorm();
+
+        if (this._rainParticles) this._rainParticles.dispose();
+        if (this._snowParticles) this._snowParticles.dispose();
+        if (this._lightningLight) this._lightningLight.dispose();
+        if (this.ambientLight) this.ambientLight.dispose();
+        console.log("Weather system disposed.");
+    }
+
+    // =================================================================================================
+    // PRIVATE LOGIC
+    // =================================================================================================
+
+    _transitionWeather(from, to) {
+        console.log(`Autonomous transition from ${from} to ${to} with intensity ${this.intensity.toFixed(2)}`);
+
+        const transitionTime = 5000; // 5 seconds for a slower, more natural transition
+        const totalFrames = (transitionTime / 1000) * 30;
+
+        const maxRainRate = 4000;
+        const maxSnowRate = 1500;
+        let targetRainRate = 0;
+        let targetSnowRate = 0;
+        let targetLight = {
+            intensity: 1.0,
+            diffuse: new BABYLON.Color3(1, 1, 1),
+            ground: new BABYLON.Color3(0.7, 0.7, 0.7)
+        };
+
+        switch (to) {
+            case 'rain':
+                targetRainRate = maxRainRate * this.intensity;
+                targetLight = { intensity: 0.6, diffuse: new BABYLON.Color3.FromHexString("#AABBDD"), ground: new BABYLON.Color3.FromHexString("#556677") };
+                break;
+            case 'storm':
+                targetRainRate = maxRainRate * this.intensity;
+                targetLight = { intensity: 0.3, diffuse: new BABYLON.Color3.FromHexString("#8899AA"), ground: new BABYLON.Color3.FromHexString("#334455") };
+                this._startStorm();
+                break;
+            case 'snow':
+                targetSnowRate = maxSnowRate * this.intensity;
+                targetLight = { intensity: 0.8, diffuse: new BABYLON.Color3.FromHexString("#DDDDFF"), ground: new BABYLON.Color3.FromHexString("#BBDDFF") };
+                break;
         }
-        if (this.ambientSoundTimer) {
-            clearInterval(this.ambientSoundTimer);
-            this.ambientSoundTimer = null;
-        }
-        if (this.entitySpawnTimer) {
-            clearInterval(this.entitySpawnTimer);
-            this.entitySpawnTimer = null;
-        }
-        
-        // Dispose all particle systems
-        const systems = [
-            'rainParticles', 'bloodDroplets', 'ambientDrip', 
-            'organicChunks', 'mist', 'sparks', 
-            'shadowEntities', 'pulseMembrane'
-        ];
-        
-        systems.forEach(system => {
-            if (this[system]) {
-                this[system].dispose();
-                this[system] = null;
-            }
-        });
-        
-        // Dispose lights
-        if (this.mainLight) {
-            this.mainLight.dispose();
-            this.mainLight = null;
-        }
-        if (this.redLight) {
-            this.redLight.dispose();
-            this.redLight = null;
-        }
-        if (this.strobeLight) {
-            this.strobeLight.dispose();
-            this.strobeLight = null;
-        }
+
+        this._animateValue(this._rainParticles, "emitRate", targetRainRate, totalFrames);
+        this._animateValue(this._snowParticles, "emitRate", targetSnowRate, totalFrames);
+        this._animateValue(this.ambientLight, "intensity", targetLight.intensity, totalFrames);
+        this._animateColor(this.ambientLight, "diffuse", targetLight.diffuse, totalFrames);
+        this._animateColor(this.ambientLight, "groundColor", targetLight.ground, totalFrames);
+    }
+
+    _startStorm() {
+        const flash = () => {
+            this._lightningLight.position = new BABYLON.Vector3((Math.random() - 0.5) * 200, 80 + Math.random() * 40, (Math.random() - 0.5) * 200);
+            this._lightningLight.intensity = 15;
+            setTimeout(() => { this._lightningLight.intensity = 0; }, 50 + Math.random() * 100);
+            const nextFlashDelay = 4000 + Math.random() * 8000;
+            this._lightningTimer = setTimeout(flash, nextFlashDelay);
+        };
+        this._lightningTimer = setTimeout(flash, 1000 + Math.random() * 3000);
+    }
+
+    _stopStorm() {
+        if (this._lightningTimer) clearTimeout(this._lightningTimer);
+        this._lightningTimer = null;
+        this._lightningLight.intensity = 0;
+    }
+
+    _animateValue(object, property, targetValue, totalFrames) {
+        BABYLON.Animation.CreateAndStartAnimation(`${property}Anim`, object, property, 30, totalFrames, object[property], targetValue, 0);
+    }
+
+    _animateColor(object, property, targetColor, totalFrames) {
+        BABYLON.Animation.CreateAndStartAnimation(`${property}Anim`, object, property, 30, totalFrames, object[property], targetColor, 0);
     }
 }
+
+
+// =================================================================================================
+// HOW TO USE
+// =================================================================================================
+/*
+// In your main game file, after you create your scene:
+
+// 1. Create an instance of the system. That's it. It now runs by itself.
+const weatherSystem = new EnhancedWeatherSystem(scene);
+
+// 2. (Optional) If you need to force a specific weather for a cutscene or event,
+// you can still call setWeather(). The autonomous cycle will eventually take over again.
+//
+//    exampleButton.onClick = function() {
+//        console.log("Forcing a storm for this event!");
+//        weatherSystem.setWeather('storm', 1.0);
+//    };
+
+// 3. When you are done with your scene (e.g., loading a new level),
+//    make sure to dispose of the system to clean up all resources.
+//
+//    window.onbeforeunload = function() {
+//        weatherSystem.dispose();
+//    };
+*/

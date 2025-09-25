@@ -30,6 +30,7 @@ class TowerDefenseGame {
             'basic': { title: 'M4 TURRET', description: 'A standard automatic turret, effective against light armored units. Good all-around defense.' },
             'missile': { title: 'RPG LAUNCHER', description: 'Launches powerful rockets that deal area-of-effect damage. Ideal for groups of enemies or heavily armored targets.' },
             'laser': { title: 'RAIL GUN', description: 'Fires high-energy laser beams with pinpoint accuracy and piercing power. Excellent against fast, single targets.' },
+            'light': { title: 'LIGHT TOWER', description: 'Illuminates the surrounding area with a bright point light. Helps visibility in dark conditions.' },
             'colony': { title: 'COLONY', description: 'Establishes a new settlement, expanding your territory and providing a new target for enemies. Essential for strategic defense.' },
             'playerAttack': { title: 'PLAYER ATTACK', description: 'Calls in a powerful player-controlled attack drone that clears all enemies on the map. Use wisely!' },
             'researchStation': { title: 'RESEARCH STATION', description: 'Unlocks new technologies and upgrades for your towers and units. Invest in research to gain a strategic advantage.' },
@@ -135,6 +136,7 @@ class TowerDefenseGame {
             basic: { cost: 40, damage: 25, range: 30, fireRate: 900, color: '#ff6b35', name: 'BASIC' },
             missile: { cost: 85, damage: 60, range: 32, fireRate: 1400, color: '#e74c3c', name: 'MISSILE' },
             laser: { cost: 130, damage: 40, range: 38, fireRate: 350, color: '#3498db', name: 'LASER' },
+            light: { cost: 50, damage: 0, range: 25, fireRate: 0, color: '#ffeb3b', name: 'LIGHT' }, // New: Light tower
             colony: { cost: 20, name: 'COLONY' }, // New: Colony definition
             playerAttack: { cost: 100, name: 'PLAYER ATTACK' }, // New: Player Attack special weapon
             researchStation: { cost: 500, name: 'RESEARCH STATION' }, // New: Research Station definition
@@ -143,6 +145,21 @@ class TowerDefenseGame {
         
         this.isEnhancedWeather = true;
         this.init();
+    }
+
+    triggerStoryPopups() {
+        popupManager.addMessage("Captain's Log: Day 1. We've established Outpost Prime. The indigenous life seems... unsettling.", 5000);
+        popupManager.addMessage("Day 3: The fog is constant. Strange noises in the distance. Jenkins from Bravo team went missing.", 15000);
+        popupManager.addMessage("Day 5: We found Jenkins. Or what was left of him. The local fauna is more aggressive than anticipated.", 30000);
+        popupManager.addMessage("Day 7: They're testing our defenses. Small, coordinated attacks. They're intelligent.", 45000);
+        popupManager.addMessage("Day 9: The attacks are relentless. We're losing ground. The perimeter is breached.", 60000);
+        popupManager.addMessage("Day 10: Communications are down. We're on our own. The sky is swarming with them.", 75000);
+        popupManager.addMessage("Day 11: The main generator is down. We're in the dark. They're inside the walls.", 90000);
+        popupManager.addMessage("Day 12: I can hear them scratching at the door. This is my last entry. If anyone finds this... it's too late.", 105000);
+        popupManager.addMessage("...", 120000);
+        popupManager.addMessage("...", 125000);
+        popupManager.addMessage("...", 130000);
+        popupManager.addMessage("Signal Lost.", 140000);
     }
 
     async activatePlayerAttack() {
@@ -740,7 +757,7 @@ class TowerDefenseGame {
     }
 
     getTowerEmoji(type) {
-        const emojis = { basic: '🔫', missile: '🚀', laser: '⚡', colony: '🏡', playerAttack: '🛸' }; // Added playerAttack emoji
+        const emojis = { basic: '🔫', missile: '🚀', laser: '⚡', colony: '🏡', playerAttack: '🛸', light: '💡' }; // Added light tower emoji
         return emojis[type] || '🗼';
     }
 
@@ -884,8 +901,7 @@ class TowerDefenseGame {
                     towerBuilt();
                 }
                 this.selectTowerType('basic'); // Reset to basic tower after placement
-            }
-            else {
+            } else {
                 console.log("❌ Invalid placement - too close to path or other structures");
             }
         } else {
@@ -922,6 +938,75 @@ class TowerDefenseGame {
     async createTower(position, type) {
         const towerData = this.towerTypes[type];
         let modelFileName = "";
+        
+        if (type === 'light') {
+            // Create a simple rectangular tower for light
+            const base = BABYLON.MeshBuilder.CreateBox("lightTowerBase", {
+                height: 8,
+                width: 2,
+                depth: 2
+            }, this.scene);
+            base.position = position.clone();
+            
+            // Create light emitter at the top with enhanced properties
+            const light = new BABYLON.PointLight("towerLight", new BABYLON.Vector3(0, 9, 0), this.scene);
+            light.parent = base;
+            light.intensity = 2.5; // Increased intensity
+            light.diffuse = BABYLON.Color3.FromHexString(towerData.color);
+            light.specular = BABYLON.Color3.FromHexString(towerData.color); // Added specular
+            light.range = towerData.range * 1.5; // Increased range
+            
+            // Add volumetric light effect
+            const volumetricLight = new BABYLON.VolumetricLightScatteringPostProcess(
+                'volumetric', 1.0, this.scene.activeCamera, light, 100, BABYLON.Texture.BILINEAR_SAMPLINGMODE, this.engine
+            );
+            volumetricLight.exposure = 0.15;
+            volumetricLight.decay = 0.95;
+            volumetricLight.weight = 0.15;
+            volumetricLight.density = 0.5;
+            
+            // Create a glowing sphere at the top with enhanced effects
+            const glowSphere = BABYLON.MeshBuilder.CreateSphere("lightEmitter", {
+                diameter: 1.2 // Slightly larger
+            }, this.scene);
+            glowSphere.position = new BABYLON.Vector3(0, 4.5, 0);
+            glowSphere.parent = base;
+            
+            // Create enhanced glowing material for the sphere
+            const glowMaterial = new BABYLON.StandardMaterial("lightMaterial", this.scene);
+            glowMaterial.emissiveColor = BABYLON.Color3.FromHexString(towerData.color);
+            glowMaterial.diffuseColor = BABYLON.Color3.FromHexString(towerData.color);
+            glowMaterial.specularColor = BABYLON.Color3.FromHexString(towerData.color);
+            glowMaterial.ambientColor = BABYLON.Color3.FromHexString(towerData.color);
+            glowMaterial.disableLighting = true;
+            
+            // Add glow layer for enhanced effect
+            const glowLayer = new BABYLON.GlowLayer("lightGlow", this.scene);
+            glowLayer.intensity = 1.0;
+            glowLayer.addIncludedOnlyMesh(glowSphere);
+            
+            glowSphere.material = glowMaterial;
+            
+            // Create base material
+            const baseMaterial = new BABYLON.StandardMaterial("baseMaterial", this.scene);
+            baseMaterial.diffuseColor = BABYLON.Color3.FromHexString("#444444");
+            base.material = baseMaterial;
+            
+            const lightTower = {
+                base: base,
+                turret: base,
+                type: type,
+                data: towerData,
+                health: 100,
+                maxHealth: 100,
+                light: light,
+                glowSphere: glowSphere
+            };
+            
+            this.createTowerHealthBar(lightTower);
+            return lightTower;
+        }
+        
         switch (type) {
             case "basic":
                 modelFileName = "basic_tower.glb";
@@ -1611,7 +1696,7 @@ class TowerDefenseGame {
                 console.log(`💔 Lost a life! Lives remaining: ${this.lives}`);
                 
                 if (this.lives <= 0) {
-                    document.body.style.backgroundImage = 'url(\'assets/images/bg4.jpg\')';
+                    document.body.style.backgroundImage = 'url(\'assets/images/bg4.jpg\")';
                     document.body.style.backgroundSize = 'cover';
                     document.body.style.backgroundPosition = 'center';
                     alert(`💀 GAME OVER!\n\nFinal Score: ${this.score}\nWaves Survived: ${this.wave}\n\nPress OK to restart`);
@@ -2045,8 +2130,8 @@ function buyResearchStation() {
         const researchStationCost = game.towerTypes.researchStation.cost;
         if (game.gold >= researchStationCost) {
             game.gold -= researchStationCost;
-            game.updateUI();
-            game.selectTowerType('researchStation'); // Set selected type for placement
+            this.updateUI();
+            this.selectTowerType('researchStation'); // Set selected type for placement
             console.log(`🔬 Research Station selected for placement. Cost: ${researchStationCost}.`);
         } else {
             alert(`Need ${researchStationCost - game.gold} more gold to buy Research Station.`);
@@ -2059,8 +2144,8 @@ function buyFarmingUnit() {
         const farmingUnitCost = game.towerTypes.farmingUnit.cost;
         if (game.gold >= farmingUnitCost) {
             game.gold -= farmingUnitCost;
-            game.updateUI();
-            game.selectTowerType('farmingUnit'); // Set selected type for placement
+            this.updateUI();
+            this.selectTowerType('farmingUnit'); // Set selected type for placement
             console.log(`🌾 Farming Unit selected for placement. Cost: ${farmingUnitCost}.`);
         } else {
             alert(`Need ${farmingUnitCost - game.gold} more gold to buy Farming Unit.`);

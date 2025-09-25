@@ -1,17 +1,26 @@
 window.addEventListener('DOMContentLoaded', () => {
     const mainMenu = document.getElementById('mainMenu');
-    const startGameBtn = document.getElementById('startGameBtn');
+    const regularModeBtn = document.getElementById('regularModeBtn');
+    const alienBuilderModeBtn = document.getElementById('alienBuilderModeBtn');
     const videoContainer = document.getElementById('videoContainer');
     const introVideo = document.getElementById('introVideo');
     const emojiRainContainer = document.getElementById('emojiRainContainer');
     const nightvisionOverlay = document.getElementById('nightvisionOverlay');
     const introMusicSound = document.getElementById('introMusicSound'); // Get the introMusicSound element
 
-    if (mainMenu && startGameBtn && videoContainer && introVideo) {
+    if (mainMenu && regularModeBtn && alienBuilderModeBtn && videoContainer && introVideo) {
         mainMenu.style.display = 'flex';
         document.body.classList.add('custom-main-menu-cursor'); // Add custom cursor class
 
-        startGameBtn.addEventListener('click', () => {
+        regularModeBtn.addEventListener('click', () => {
+            startGame('regular');
+        });
+
+        alienBuilderModeBtn.addEventListener('click', () => {
+            startGame('alienBuilder');
+        });
+
+        function startGame(mode) {
             mainMenu.style.display = 'none';
             document.body.classList.remove('custom-main-menu-cursor'); // Remove custom cursor class
             videoContainer.style.display = 'flex';
@@ -29,7 +38,22 @@ window.addEventListener('DOMContentLoaded', () => {
                     console.error("Error playing intro music sound:", e);
                 });
             }
-        });
+
+            loadGameScript(mode);
+        }
+
+        function loadGameScript(mode) {
+            const script = document.createElement('script');
+            if (mode === 'regular') {
+                script.src = 'game.js';
+            } else if (mode === 'alienBuilder') {
+                script.src = 'gamemode1.js';
+            }
+            script.onload = () => {
+                game = new TowerDefenseGame();
+            };
+            document.body.appendChild(script);
+        }
     }
 
     // --- Background Slideshow ---
@@ -115,5 +139,35 @@ window.addEventListener('DOMContentLoaded', () => {
     // Start nightvision flickering
     if (nightvisionOverlay) {
         setInterval(toggleNightvision, Math.random() * 2000 + 1000); // Flicker every 1-3 seconds
+    }
+
+    // --- Stock Ticker ---
+    const stockTicker = document.getElementById('stockTicker');
+    const stockTickerContent = document.getElementById('stockTickerContent');
+
+    if (stockTicker && stockTickerContent) {
+        const apiKey = 'YOUR_API_KEY'; // Replace with your actual API key
+        const stocks = ['GME', 'AMC', 'TSLA', 'AAPL', 'GOOG'];
+
+        async function fetchStockPrices() {
+            try {
+                const response = await fetch(`https://financialmodelingprep.com/api/v3/quote/${stocks.join(',')}?apikey=${apiKey}`);
+                const data = await response.json();
+
+                let tickerText = '';
+                data.forEach(stock => {
+                    const change = stock.change.toFixed(2);
+                    const changeColor = change >= 0 ? '#00ff00' : '#ff0000';
+                    tickerText += `<span style="color: #ffffff;">${stock.symbol}:</span> <span style="color: ${changeColor};">${stock.price.toFixed(2)} (${change})</span> &nbsp;&nbsp;&nbsp;`;
+                });
+                stockTickerContent.innerHTML = tickerText;
+            } catch (error) {
+                console.error('Error fetching stock data:', error);
+                stockTickerContent.innerHTML = 'Error loading stock data.';
+            }
+        }
+
+        fetchStockPrices();
+        setInterval(fetchStockPrices, 60000); // Update every minute
     }
 });

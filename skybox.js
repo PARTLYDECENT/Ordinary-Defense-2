@@ -259,10 +259,10 @@ class WarSkybox {
 
     getWeatherState(weather) {
         const states = {
-            Level0_Quiet: { flickerIntensity: 0.5, wallPatternIntensity: 0.8, glitchIntensity: 0.1, hazeDensity: 0.4, stainIntensity: 0.6, shadowIntensity: 0.5, realityWarp: 0.0, overallBrightness: 0.9, },
-            Flicker_Event: { flickerIntensity: 1.0, wallPatternIntensity: 0.8, glitchIntensity: 0.3, hazeDensity: 0.5, stainIntensity: 0.7, shadowIntensity: 0.9, realityWarp: 0.1, overallBrightness: 0.7, },
-            Entity_Presence: { flickerIntensity: 0.2, wallPatternIntensity: 0.4, glitchIntensity: 0.9, hazeDensity: 0.8, stainIntensity: 0.9, shadowIntensity: 1.0, realityWarp: 0.8, overallBrightness: 0.6, },
-            Structural_Collapse: { flickerIntensity: 1.0, wallPatternIntensity: 0.1, glitchIntensity: 1.0, hazeDensity: 1.0, stainIntensity: 1.0, shadowIntensity: 1.0, realityWarp: 1.0, overallBrightness: 0.5, }
+            Level0_Quiet: { flickerIntensity: 0.5, wallPatternIntensity: 0.8, glitchIntensity: 0.1, hazeDensity: 0.4, stainIntensity: 0.6, shadowIntensity: 0.5, realityWarp: 0.0, overallBrightness: 2.5, },
+            Flicker_Event: { flickerIntensity: 1.0, wallPatternIntensity: 0.8, glitchIntensity: 0.3, hazeDensity: 0.5, stainIntensity: 0.7, shadowIntensity: 0.9, realityWarp: 0.1, overallBrightness: 2.5, },
+            Entity_Presence: { flickerIntensity: 0.2, wallPatternIntensity: 0.4, glitchIntensity: 0.9, hazeDensity: 0.8, stainIntensity: 0.9, shadowIntensity: 1.0, realityWarp: 0.8, overallBrightness: 2.5, },
+            Structural_Collapse: { flickerIntensity: 1.0, wallPatternIntensity: 0.1, glitchIntensity: 1.0, hazeDensity: 1.0, stainIntensity: 1.0, shadowIntensity: 1.0, realityWarp: 1.0, overallBrightness: 2.5, }
         };
         return states[weather] || states.Level0_Quiet;
     }

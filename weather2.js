@@ -3,7 +3,7 @@
  * A comprehensive weather system with advanced visual effects and dynamic behaviors
  */
 
-class SimpleWeatherSystem  {
+class ExtendedWeatherSystem {
     constructor(scene, engine) {
         this.scene = scene;
         this.engine = engine;
@@ -1770,7 +1770,7 @@ weatherSystem.dispose();
 
 // Export for use in modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = EnhancedWeatherSystem;
+    module.exports = ExtendedWeatherSystem;
 }
 
 
